@@ -1,0 +1,686 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - core/pipeline/scr1_pipe_tdu.sv</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../index.html">top level</a> - <a href="index.html">core/pipeline</a> - scr1_pipe_tdu.sv<span style="font-size: 80%;"> (source / <a href="scr1_pipe_tdu.sv.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">40.6&nbsp;%</td>
+            <td class="headerCovTableEntry">170</td>
+            <td class="headerCovTableEntry">69</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2023-12-19 23:18:55</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryHi">-</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+                  <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /// Copyright by Syntacore LLC © 2016-2021. See LICENSE for details</span>
+<span id="L2"><span class="lineNum">       2</span>              : /// @file       &lt;scr1_pipe_tdu.sv&gt;</span>
+<span id="L3"><span class="lineNum">       3</span>              : /// @brief      Trigger Debug Unit (TDU)</span>
+<span id="L4"><span class="lineNum">       4</span>              : ///</span>
+<span id="L5"><span class="lineNum">       5</span>              : </span>
+<span id="L6"><span class="lineNum">       6</span>              : //------------------------------------------------------------------------------</span>
+<span id="L7"><span class="lineNum">       7</span>              :  //</span>
+<span id="L8"><span class="lineNum">       8</span>              :  // Functionality:</span>
+<span id="L9"><span class="lineNum">       9</span>              :  // - Provides read/write interface for TDU CSRs</span>
+<span id="L10"><span class="lineNum">      10</span>              :  // - Provides triggers functionality:</span>
+<span id="L11"><span class="lineNum">      11</span>              :  //   - Supports triggers either in both Debug and M modes or in Debug mode only</span>
+<span id="L12"><span class="lineNum">      12</span>              :  //   - Supports virtual address matching (load, store, exec) triggers</span>
+<span id="L13"><span class="lineNum">      13</span>              :  //   - Supports instruction count triggers</span>
+<span id="L14"><span class="lineNum">      14</span>              :  //   - Supports the following actions on trigger firing:</span>
+<span id="L15"><span class="lineNum">      15</span>              :  //     - Breakpoint exception raising</span>
+<span id="L16"><span class="lineNum">      16</span>              :  //     - Debug Mode entering</span>
+<span id="L17"><span class="lineNum">      17</span>              :  //   - Supports triggers chaining</span>
+<span id="L18"><span class="lineNum">      18</span>              :  //</span>
+<span id="L19"><span class="lineNum">      19</span>              :  // Structure:</span>
+<span id="L20"><span class="lineNum">      20</span>              :  // - CSR read/write i/f</span>
+<span id="L21"><span class="lineNum">      21</span>              :  // - TDU CSRs:</span>
+<span id="L22"><span class="lineNum">      22</span>              :  //   - TSELECT</span>
+<span id="L23"><span class="lineNum">      23</span>              :  //   - TDATA1/MCONTROL/ICOUNT</span>
+<span id="L24"><span class="lineNum">      24</span>              :  //   - TDATA2</span>
+<span id="L25"><span class="lineNum">      25</span>              :  //   - TINFO</span>
+<span id="L26"><span class="lineNum">      26</span>              :  // - TDU &lt;-&gt; EXU i/f</span>
+<span id="L27"><span class="lineNum">      27</span>              :  // - TDU &lt;-&gt; LSU i/f</span>
+<span id="L28"><span class="lineNum">      28</span>              :  // - TDU &lt;-&gt; HDU i/f</span>
+<span id="L29"><span class="lineNum">      29</span>              : //------------------------------------------------------------------------------</span>
+<span id="L30"><span class="lineNum">      30</span>              : </span>
+<span id="L31"><span class="lineNum">      31</span>              : `include &quot;scr1_arch_description.svh&quot;</span>
+<span id="L32"><span class="lineNum">      32</span>              : </span>
+<span id="L33"><span class="lineNum">      33</span>              : `ifdef SCR1_TDU_EN</span>
+<span id="L34"><span class="lineNum">      34</span>              : `include &quot;scr1_riscv_isa_decoding.svh&quot;</span>
+<span id="L35"><span class="lineNum">      35</span>              : `include &quot;scr1_tdu.svh&quot;</span>
+<span id="L36"><span class="lineNum">      36</span>              : </span>
+<span id="L37"><span class="lineNum">      37</span>              : module scr1_pipe_tdu (</span>
+<span id="L38"><span class="lineNum">      38</span>              :     // Common signals</span>
+<span id="L39"><span class="lineNum">      39</span>              :     input  logic                                            rst_n,                      // TDU reset</span>
+<span id="L40"><span class="lineNum">      40</span>              :     input  logic                                            clk,                        // TDU clock</span>
+<span id="L41"><span class="lineNum">      41</span>              :     input  logic                                            clk_en,                     // TDU clock enable</span>
+<span id="L42"><span class="lineNum">      42</span>              :     input  logic                                            tdu_dsbl_i,                 // TDU Disable</span>
+<span id="L43"><span class="lineNum">      43</span>              : </span>
+<span id="L44"><span class="lineNum">      44</span>              :     // TDU &lt;-&gt; CSR interface</span>
+<span id="L45"><span class="lineNum">      45</span>              :     input  logic                                            csr2tdu_req_i,              // CSR-TDU i/f request</span>
+<span id="L46"><span class="lineNum">      46</span>              :     input  type_scr1_csr_cmd_sel_e                          csr2tdu_cmd_i,              // CSR-TDU i/f command</span>
+<span id="L47"><span class="lineNum">      47</span>              :     input  logic [SCR1_CSR_ADDR_TDU_OFFS_W-1:0]             csr2tdu_addr_i,             // CSR-TDU i/f address</span>
+<span id="L48"><span class="lineNum">      48</span>              :     input  logic [SCR1_TDU_DATA_W-1:0]                      csr2tdu_wdata_i,            // CSR-TDU i/f write data</span>
+<span id="L49"><span class="lineNum">      49</span>              :     output logic [SCR1_TDU_DATA_W-1:0]                      tdu2csr_rdata_o,            // CSR-TDU i/f read data</span>
+<span id="L50"><span class="lineNum">      50</span>              :     output type_scr1_csr_resp_e                             tdu2csr_resp_o,             // CSR-TDU i/f response</span>
+<span id="L51"><span class="lineNum">      51</span>              : </span>
+<span id="L52"><span class="lineNum">      52</span>              :     // TDU &lt;-&gt; EXU interface</span>
+<span id="L53"><span class="lineNum">      53</span>              :     input  type_scr1_brkm_instr_mon_s                       exu2tdu_imon_i,             // Instruction stream monitoring</span>
+<span id="L54"><span class="lineNum">      54</span>              :     output logic [SCR1_TDU_ALLTRIG_NUM-1 : 0]               tdu2exu_ibrkpt_match_o,     // Instruction BP match</span>
+<span id="L55"><span class="lineNum">      55</span>              :     output logic                                            tdu2exu_ibrkpt_exc_req_o,   // Instruction BP exception request</span>
+<span id="L56"><span class="lineNum">      56</span>              :     input  logic [SCR1_TDU_ALLTRIG_NUM-1 : 0]               exu2tdu_bp_retire_i,        // Map of BPs being retired</span>
+<span id="L57"><span class="lineNum">      57</span>              : </span>
+<span id="L58"><span class="lineNum">      58</span>              :     // TDU &lt;-&gt; LSU interface</span>
+<span id="L59"><span class="lineNum">      59</span>              : `ifndef SCR1_TDU_EN</span>
+<span id="L60"><span class="lineNum">      60</span>              :     output logic                                            tdu2lsu_brk_en_o,           // TDU-LSU Breakpoint enable</span>
+<span id="L61"><span class="lineNum">      61</span>              : `endif // SCR1_TDU_EN</span>
+<span id="L62"><span class="lineNum">      62</span>              :     output logic                                            tdu2lsu_ibrkpt_exc_req_o,   // TDU-LSU Instruction BP exception request</span>
+<span id="L63"><span class="lineNum">      63</span>              :     input  type_scr1_brkm_lsu_mon_s                         lsu2tdu_dmon_i,             // TDU-LSU Data address stream monitoring</span>
+<span id="L64"><span class="lineNum">      64</span>              :     output logic [SCR1_TDU_MTRIG_NUM-1 : 0]                 tdu2lsu_dbrkpt_match_o,     // TDU-LSU Data BP match</span>
+<span id="L65"><span class="lineNum">      65</span>              :     output logic                                            tdu2lsu_dbrkpt_exc_req_o,   // TDU-LSU Data BP exception request</span>
+<span id="L66"><span class="lineNum">      66</span>              : </span>
+<span id="L67"><span class="lineNum">      67</span>              :     // TDU &lt;-&gt; HDU interface</span>
+<span id="L68"><span class="lineNum">      68</span>              :     output logic                                            tdu2hdu_dmode_req_o         // Debug Mode redirection request</span>
+<span id="L69"><span class="lineNum">      69</span>              : );</span>
+<span id="L70"><span class="lineNum">      70</span>              : </span>
+<span id="L71"><span class="lineNum">      71</span>              : //------------------------------------------------------------------------------</span>
+<span id="L72"><span class="lineNum">      72</span>              : // Local parameters declaration</span>
+<span id="L73"><span class="lineNum">      73</span>              : //------------------------------------------------------------------------------</span>
+<span id="L74"><span class="lineNum">      74</span>              : </span>
+<span id="L75"><span class="lineNum">      75</span>              : localparam int unsigned MTRIG_NUM   = SCR1_TDU_MTRIG_NUM;</span>
+<span id="L76"><span class="lineNum">      76</span>              : localparam int unsigned ALLTRIG_NUM = SCR1_TDU_ALLTRIG_NUM;</span>
+<span id="L77"><span class="lineNum">      77</span>              : localparam int unsigned ALLTRIG_W   = $clog2(ALLTRIG_NUM+1);</span>
+<span id="L78"><span class="lineNum">      78</span>              : </span>
+<span id="L79"><span class="lineNum">      79</span>              : //------------------------------------------------------------------------------</span>
+<span id="L80"><span class="lineNum">      80</span>              : // Local signals declaration</span>
+<span id="L81"><span class="lineNum">      81</span>              : //------------------------------------------------------------------------------</span>
+<span id="L82"><span class="lineNum">      82</span>              : </span>
+<span id="L83"><span class="lineNum">      83</span>              : // TDU CSRs read/write i/f signals</span>
+<span id="L84"><span class="lineNum">      84</span>              : //------------------------------------------------------------------------------</span>
+<span id="L85"><span class="lineNum">      85</span>              : </span>
+<span id="L86"><span class="lineNum">      86</span>              : // Write signals</span>
+<span id="L87"><span class="lineNum">      87</span>              : logic                                           csr_wr_req;</span>
+<span id="L88"><span class="lineNum">      88</span>              : logic [SCR1_TDU_DATA_W-1:0]                     csr_wr_data;</span>
+<span id="L89"><span class="lineNum">      89</span>              : </span>
+<span id="L90"><span class="lineNum">      90</span>              : // Register select</span>
+<span id="L91"><span class="lineNum">      91</span>              : logic                                           csr_addr_tselect;</span>
+<span id="L92"><span class="lineNum">      92</span>              : logic [MTRIG_NUM-1:0]                           csr_addr_mcontrol;</span>
+<span id="L93"><span class="lineNum">      93</span>              : logic [MTRIG_NUM-1:0]                           csr_addr_tdata2;</span>
+<span id="L94"><span class="lineNum">      94</span>              : `ifdef SCR1_TDU_ICOUNT_EN</span>
+<span id="L95"><span class="lineNum">      95</span>              : logic                                           csr_addr_icount;</span>
+<span id="L96"><span class="lineNum">      96</span>              : `endif // SCR1_TDU_ICOUNT_EN</span>
+<span id="L97"><span class="lineNum">      97</span>              : </span>
+<span id="L98"><span class="lineNum">      98</span>              : // TDU CSRs</span>
+<span id="L99"><span class="lineNum">      99</span>              : //------------------------------------------------------------------------------</span>
+<span id="L100"><span class="lineNum">     100</span>              : </span>
+<span id="L101"><span class="lineNum">     101</span>              : // TSELECT register</span>
+<span id="L102"><span class="lineNum">     102</span>              : logic                                           csr_tselect_upd;</span>
+<span id="L103"><span class="lineNum">     103</span>              : logic [ALLTRIG_W-1:0]                           csr_tselect_ff;</span>
+<span id="L104"><span class="lineNum">     104</span>              : </span>
+<span id="L105"><span class="lineNum">     105</span>              : // MCONTROL register</span>
+<span id="L106"><span class="lineNum">     106</span>              : logic [MTRIG_NUM-1:0]                           csr_mcontrol_wr_req;</span>
+<span id="L107"><span class="lineNum">     107</span>              : logic [MTRIG_NUM-1:0]                           csr_mcontrol_clk_en;</span>
+<span id="L108"><span class="lineNum">     108</span>              : logic [MTRIG_NUM-1:0]                           csr_mcontrol_upd;</span>
+<span id="L109"><span class="lineNum">     109</span>              : </span>
+<span id="L110"><span class="lineNum">     110</span>              : logic [MTRIG_NUM-1:0]                           csr_mcontrol_dmode_ff;</span>
+<span id="L111"><span class="lineNum">     111</span>              : logic [MTRIG_NUM-1:0]                           csr_mcontrol_dmode_next;</span>
+<span id="L112"><span class="lineNum">     112</span>              : logic [MTRIG_NUM-1:0]                           csr_mcontrol_m_ff;</span>
+<span id="L113"><span class="lineNum">     113</span>              : logic [MTRIG_NUM-1:0]                           csr_mcontrol_m_next;</span>
+<span id="L114"><span class="lineNum">     114</span>              : logic [MTRIG_NUM-1:0]                           csr_mcontrol_exec_ff;</span>
+<span id="L115"><span class="lineNum">     115</span>              : logic [MTRIG_NUM-1:0]                           csr_mcontrol_exec_next;</span>
+<span id="L116"><span class="lineNum">     116</span>              : logic [MTRIG_NUM-1:0]                           csr_mcontrol_load_ff;</span>
+<span id="L117"><span class="lineNum">     117</span>              : logic [MTRIG_NUM-1:0]                           csr_mcontrol_load_next;</span>
+<span id="L118"><span class="lineNum">     118</span>              : logic [MTRIG_NUM-1:0]                           csr_mcontrol_store_ff;</span>
+<span id="L119"><span class="lineNum">     119</span>              : logic [MTRIG_NUM-1:0]                           csr_mcontrol_store_next;</span>
+<span id="L120"><span class="lineNum">     120</span>              : logic [MTRIG_NUM-1:0]                           csr_mcontrol_action_ff;</span>
+<span id="L121"><span class="lineNum">     121</span>              : logic [MTRIG_NUM-1:0]                           csr_mcontrol_action_next;</span>
+<span id="L122"><span class="lineNum">     122</span>              : logic [MTRIG_NUM-1:0]                           csr_mcontrol_hit_ff;</span>
+<span id="L123"><span class="lineNum">     123</span>              : logic [MTRIG_NUM-1:0]                           csr_mcontrol_hit_next;</span>
+<span id="L124"><span class="lineNum">     124</span>              : </span>
+<span id="L125"><span class="lineNum">     125</span>              : logic [MTRIG_NUM-1:0]                           csr_mcontrol_exec_hit;</span>
+<span id="L126"><span class="lineNum">     126</span>              : logic [MTRIG_NUM-1:0]                           csr_mcontrol_ldst_hit;</span>
+<span id="L127"><span class="lineNum">     127</span>              : </span>
+<span id="L128"><span class="lineNum">     128</span>              : // ICOUNT register</span>
+<span id="L129"><span class="lineNum">     129</span>              : `ifdef SCR1_TDU_ICOUNT_EN</span>
+<span id="L130"><span class="lineNum">     130</span>              : logic                                           csr_icount_wr_req;</span>
+<span id="L131"><span class="lineNum">     131</span>              : logic                                           csr_icount_clk_en;</span>
+<span id="L132"><span class="lineNum">     132</span>              : logic                                           csr_icount_upd;</span>
+<span id="L133"><span class="lineNum">     133</span>              : </span>
+<span id="L134"><span class="lineNum">     134</span>              : logic                                           csr_icount_dmode_ff;</span>
+<span id="L135"><span class="lineNum">     135</span>              : logic                                           csr_icount_dmode_next;</span>
+<span id="L136"><span class="lineNum">     136</span>              : logic                                           csr_icount_m_ff;</span>
+<span id="L137"><span class="lineNum">     137</span>              : logic                                           csr_icount_m_next;</span>
+<span id="L138"><span class="lineNum">     138</span>              : logic                                           csr_icount_action_ff;</span>
+<span id="L139"><span class="lineNum">     139</span>              : logic                                           csr_icount_action_next;</span>
+<span id="L140"><span class="lineNum">     140</span>              : logic                                           csr_icount_hit_ff;</span>
+<span id="L141"><span class="lineNum">     141</span>              : logic                                           csr_icount_hit_next;</span>
+<span id="L142"><span class="lineNum">     142</span>              : logic [SCR1_TDU_ICOUNT_COUNT_HI-SCR1_TDU_ICOUNT_COUNT_LO:0]</span>
+<span id="L143"><span class="lineNum">     143</span>              :                                                 csr_icount_count_ff;</span>
+<span id="L144"><span class="lineNum">     144</span>              : logic [SCR1_TDU_ICOUNT_COUNT_HI-SCR1_TDU_ICOUNT_COUNT_LO:0]</span>
+<span id="L145"><span class="lineNum">     145</span>              :                                                 csr_icount_count_next;</span>
+<span id="L146"><span class="lineNum">     146</span>              : logic                                           csr_icount_skip_ff;</span>
+<span id="L147"><span class="lineNum">     147</span>              : logic                                           csr_icount_skip_next;</span>
+<span id="L148"><span class="lineNum">     148</span>              : </span>
+<span id="L149"><span class="lineNum">     149</span>              : logic                                           csr_icount_decr_en;</span>
+<span id="L150"><span class="lineNum">     150</span>              : logic                                           csr_icount_count_decr;</span>
+<span id="L151"><span class="lineNum">     151</span>              : logic                                           csr_icount_skip_dsbl;</span>
+<span id="L152"><span class="lineNum">     152</span>              : logic                                           csr_icount_hit;</span>
+<span id="L153"><span class="lineNum">     153</span>              : `endif // SCR1_TDU_ICOUNT_EN</span>
+<span id="L154"><span class="lineNum">     154</span>              : </span>
+<span id="L155"><span class="lineNum">     155</span>              : // TDATA2 register</span>
+<span id="L156"><span class="lineNum">     156</span>              : logic [MTRIG_NUM-1:0]                           csr_tdata2_upd;</span>
+<span id="L157"><span class="lineNum">     157</span>              : logic [MTRIG_NUM-1:0] [SCR1_TDU_DATA_W-1:0]     csr_tdata2_ff;</span>
+<span id="L158"><span class="lineNum">     158</span>              : </span>
+<span id="L159"><span class="lineNum">     159</span>              : //------------------------------------------------------------------------------</span>
+<span id="L160"><span class="lineNum">     160</span>              : // CSR read/write interface</span>
+<span id="L161"><span class="lineNum">     161</span>              : //------------------------------------------------------------------------------</span>
+<span id="L162"><span class="lineNum">     162</span>              : </span>
+<span id="L163"><span class="lineNum">     163</span>              : // Read logic</span>
+<span id="L164"><span class="lineNum">     164</span>              : //------------------------------------------------------------------------------</span>
+<span id="L165"><span class="lineNum">     165</span>              : </span>
+<span id="L166"><span class="lineNum">     166</span>              : assign tdu2csr_resp_o = csr2tdu_req_i ? SCR1_CSR_RESP_OK : SCR1_CSR_RESP_ER;</span>
+<span id="L167"><span class="lineNum">     167</span>              : </span>
+<span id="L168"><span class="lineNum">     168</span> <span class="tlaGNC tlaBgGNC">           2 : always_comb begin</span></span>
+<span id="L169"><span class="lineNum">     169</span> <span class="tlaGNC">           1 :     tdu2csr_rdata_o = '0;</span></span>
+<span id="L170"><span class="lineNum">     170</span> <span class="tlaUNC tlaBgUNC">           0 :     if (csr2tdu_req_i) begin</span></span>
+<span id="L171"><span class="lineNum">     171</span> <span class="tlaUNC">           0 :         case (csr2tdu_addr_i)</span></span>
+<span id="L172"><span class="lineNum">     172</span> <span class="tlaUNC">           0 :             SCR1_CSR_ADDR_TDU_OFFS_TSELECT: begin</span></span>
+<span id="L173"><span class="lineNum">     173</span> <span class="tlaUNC">           0 :                 tdu2csr_rdata_o = {'0, csr_tselect_ff};</span></span>
+<span id="L174"><span class="lineNum">     174</span>              :             end</span>
+<span id="L175"><span class="lineNum">     175</span> <span class="tlaUNC">           0 :             SCR1_CSR_ADDR_TDU_OFFS_TDATA2 : begin</span></span>
+<span id="L176"><span class="lineNum">     176</span> <span class="tlaUNC">           0 :                 for(int unsigned i = 0; i &lt; MTRIG_NUM; ++i) begin</span></span>
+<span id="L177"><span class="lineNum">     177</span> <span class="tlaUNC">           0 :                     if(csr_tselect_ff == ALLTRIG_W'(i)) begin</span></span>
+<span id="L178"><span class="lineNum">     178</span> <span class="tlaUNC">           0 :                         tdu2csr_rdata_o = csr_tdata2_ff[i];</span></span>
+<span id="L179"><span class="lineNum">     179</span>              :                     end</span>
+<span id="L180"><span class="lineNum">     180</span>              :                 end</span>
+<span id="L181"><span class="lineNum">     181</span>              :             end</span>
+<span id="L182"><span class="lineNum">     182</span> <span class="tlaUNC">           0 :             SCR1_CSR_ADDR_TDU_OFFS_TDATA1 : begin</span></span>
+<span id="L183"><span class="lineNum">     183</span> <span class="tlaUNC">           0 :                 for(int unsigned i = 0; i &lt; MTRIG_NUM; ++i) begin</span></span>
+<span id="L184"><span class="lineNum">     184</span> <span class="tlaUNC">           0 :                     if(csr_tselect_ff == ALLTRIG_W'(i)) begin</span></span>
+<span id="L185"><span class="lineNum">     185</span> <span class="tlaUNC">           0 :                         tdu2csr_rdata_o[SCR1_TDU_TDATA1_TYPE_HI:</span></span>
+<span id="L186"><span class="lineNum">     186</span> <span class="tlaUNC">           0 :                                        SCR1_TDU_TDATA1_TYPE_LO]      = SCR1_TDU_MCONTROL_TYPE_VAL;</span></span>
+<span id="L187"><span class="lineNum">     187</span> <span class="tlaUNC">           0 :                         tdu2csr_rdata_o[SCR1_TDU_TDATA1_DMODE]       = csr_mcontrol_dmode_ff[i];</span></span>
+<span id="L188"><span class="lineNum">     188</span> <span class="tlaUNC">           0 :                         tdu2csr_rdata_o[SCR1_TDU_MCONTROL_MASKMAX_HI:</span></span>
+<span id="L189"><span class="lineNum">     189</span> <span class="tlaUNC">           0 :                                        SCR1_TDU_MCONTROL_MASKMAX_LO] = SCR1_TDU_MCONTROL_MASKMAX_VAL;</span></span>
+<span id="L190"><span class="lineNum">     190</span> <span class="tlaUNC">           0 :                         tdu2csr_rdata_o[SCR1_TDU_MCONTROL_HIT]       = csr_mcontrol_hit_ff[i];</span></span>
+<span id="L191"><span class="lineNum">     191</span> <span class="tlaUNC">           0 :                         tdu2csr_rdata_o[SCR1_TDU_MCONTROL_SELECT]    = SCR1_TDU_MCONTROL_SELECT_VAL;</span></span>
+<span id="L192"><span class="lineNum">     192</span> <span class="tlaUNC">           0 :                         tdu2csr_rdata_o[SCR1_TDU_MCONTROL_TIMING]    = SCR1_TDU_MCONTROL_TIMING_VAL;</span></span>
+<span id="L193"><span class="lineNum">     193</span> <span class="tlaUNC">           0 :                         tdu2csr_rdata_o[SCR1_TDU_MCONTROL_ACTION_HI:</span></span>
+<span id="L194"><span class="lineNum">     194</span> <span class="tlaUNC">           0 :                                        SCR1_TDU_MCONTROL_ACTION_LO]  = {5'b0, csr_mcontrol_action_ff[i]};</span></span>
+<span id="L195"><span class="lineNum">     195</span> <span class="tlaUNC">           0 :                         tdu2csr_rdata_o[SCR1_TDU_MCONTROL_CHAIN]     = 1'b0;</span></span>
+<span id="L196"><span class="lineNum">     196</span> <span class="tlaUNC">           0 :                         tdu2csr_rdata_o[SCR1_TDU_MCONTROL_MATCH_HI:</span></span>
+<span id="L197"><span class="lineNum">     197</span> <span class="tlaUNC">           0 :                                        SCR1_TDU_MCONTROL_MATCH_LO]   = 4'b0;</span></span>
+<span id="L198"><span class="lineNum">     198</span> <span class="tlaUNC">           0 :                         tdu2csr_rdata_o[SCR1_TDU_MCONTROL_M]         = csr_mcontrol_m_ff[i];</span></span>
+<span id="L199"><span class="lineNum">     199</span> <span class="tlaUNC">           0 :                         tdu2csr_rdata_o[SCR1_TDU_MCONTROL_RESERVEDA] = SCR1_TDU_MCONTROL_RESERVEDA_VAL;</span></span>
+<span id="L200"><span class="lineNum">     200</span> <span class="tlaUNC">           0 :                         tdu2csr_rdata_o[SCR1_TDU_MCONTROL_S]         = 1'b0;</span></span>
+<span id="L201"><span class="lineNum">     201</span> <span class="tlaUNC">           0 :                         tdu2csr_rdata_o[SCR1_TDU_MCONTROL_U]         = 1'b0;</span></span>
+<span id="L202"><span class="lineNum">     202</span> <span class="tlaUNC">           0 :                         tdu2csr_rdata_o[SCR1_TDU_MCONTROL_EXECUTE]   = csr_mcontrol_exec_ff [i];</span></span>
+<span id="L203"><span class="lineNum">     203</span> <span class="tlaUNC">           0 :                         tdu2csr_rdata_o[SCR1_TDU_MCONTROL_STORE]     = csr_mcontrol_store_ff[i];</span></span>
+<span id="L204"><span class="lineNum">     204</span> <span class="tlaUNC">           0 :                         tdu2csr_rdata_o[SCR1_TDU_MCONTROL_LOAD]      = csr_mcontrol_load_ff [i];</span></span>
+<span id="L205"><span class="lineNum">     205</span>              :                     end</span>
+<span id="L206"><span class="lineNum">     206</span>              :                 end</span>
+<span id="L207"><span class="lineNum">     207</span>              : `ifdef SCR1_TDU_ICOUNT_EN</span>
+<span id="L208"><span class="lineNum">     208</span> <span class="tlaUNC">           0 :                 if(csr_tselect_ff == ALLTRIG_W'(SCR1_TDU_ALLTRIG_NUM - 1'b1)) begin</span></span>
+<span id="L209"><span class="lineNum">     209</span> <span class="tlaUNC">           0 :                     tdu2csr_rdata_o[SCR1_TDU_TDATA1_TYPE_HI:</span></span>
+<span id="L210"><span class="lineNum">     210</span> <span class="tlaUNC">           0 :                                    SCR1_TDU_TDATA1_TYPE_LO]    = SCR1_TDU_ICOUNT_TYPE_VAL;</span></span>
+<span id="L211"><span class="lineNum">     211</span> <span class="tlaUNC">           0 :                     tdu2csr_rdata_o[SCR1_TDU_TDATA1_DMODE]     = csr_icount_dmode_ff;</span></span>
+<span id="L212"><span class="lineNum">     212</span> <span class="tlaUNC">           0 :                     tdu2csr_rdata_o[SCR1_TDU_ICOUNT_HIT]       = csr_icount_hit_ff;</span></span>
+<span id="L213"><span class="lineNum">     213</span> <span class="tlaUNC">           0 :                     tdu2csr_rdata_o[SCR1_TDU_ICOUNT_COUNT_HI:</span></span>
+<span id="L214"><span class="lineNum">     214</span> <span class="tlaUNC">           0 :                                    SCR1_TDU_ICOUNT_COUNT_LO]   = csr_icount_count_ff;</span></span>
+<span id="L215"><span class="lineNum">     215</span> <span class="tlaUNC">           0 :                     tdu2csr_rdata_o[SCR1_TDU_ICOUNT_U]         = 1'b0;</span></span>
+<span id="L216"><span class="lineNum">     216</span> <span class="tlaUNC">           0 :                     tdu2csr_rdata_o[SCR1_TDU_ICOUNT_S]         = 1'b0;</span></span>
+<span id="L217"><span class="lineNum">     217</span> <span class="tlaUNC">           0 :                     tdu2csr_rdata_o[SCR1_TDU_ICOUNT_M]         = csr_icount_m_ff;</span></span>
+<span id="L218"><span class="lineNum">     218</span> <span class="tlaUNC">           0 :                     tdu2csr_rdata_o[SCR1_TDU_ICOUNT_ACTION_HI:</span></span>
+<span id="L219"><span class="lineNum">     219</span> <span class="tlaUNC">           0 :                                    SCR1_TDU_ICOUNT_ACTION_LO]  = {5'b0, csr_icount_action_ff};</span></span>
+<span id="L220"><span class="lineNum">     220</span>              :                 end</span>
+<span id="L221"><span class="lineNum">     221</span>              : `endif // SCR1_TDU_ICOUNT_EN</span>
+<span id="L222"><span class="lineNum">     222</span>              :             end</span>
+<span id="L223"><span class="lineNum">     223</span> <span class="tlaUNC">           0 :             SCR1_CSR_ADDR_TDU_OFFS_TINFO : begin</span></span>
+<span id="L224"><span class="lineNum">     224</span> <span class="tlaUNC">           0 :                 for(int unsigned i = 0; i &lt; MTRIG_NUM; ++i) begin</span></span>
+<span id="L225"><span class="lineNum">     225</span> <span class="tlaUNC">           0 :                     if(csr_tselect_ff == ALLTRIG_W'(i)) begin</span></span>
+<span id="L226"><span class="lineNum">     226</span> <span class="tlaUNC">           0 :                         tdu2csr_rdata_o[SCR1_TDU_MCONTROL_TYPE_VAL] = 1'b1;</span></span>
+<span id="L227"><span class="lineNum">     227</span>              :                     end</span>
+<span id="L228"><span class="lineNum">     228</span>              :                 end</span>
+<span id="L229"><span class="lineNum">     229</span>              : `ifdef SCR1_TDU_ICOUNT_EN</span>
+<span id="L230"><span class="lineNum">     230</span> <span class="tlaUNC">           0 :                 if(csr_tselect_ff == ALLTRIG_W'(SCR1_TDU_ALLTRIG_NUM - 1'b1)) begin</span></span>
+<span id="L231"><span class="lineNum">     231</span> <span class="tlaUNC">           0 :                     tdu2csr_rdata_o[SCR1_TDU_ICOUNT_TYPE_VAL] = 1'b1;</span></span>
+<span id="L232"><span class="lineNum">     232</span>              :                 end</span>
+<span id="L233"><span class="lineNum">     233</span>              : `endif // SCR1_TDU_ICOUNT_EN</span>
+<span id="L234"><span class="lineNum">     234</span>              :             end</span>
+<span id="L235"><span class="lineNum">     235</span> <span class="tlaUNC">           0 :             default : begin</span></span>
+<span id="L236"><span class="lineNum">     236</span>              :             end</span>
+<span id="L237"><span class="lineNum">     237</span>              :         endcase</span>
+<span id="L238"><span class="lineNum">     238</span>              :     end</span>
+<span id="L239"><span class="lineNum">     239</span>              : end</span>
+<span id="L240"><span class="lineNum">     240</span>              : </span>
+<span id="L241"><span class="lineNum">     241</span>              : // Write logic</span>
+<span id="L242"><span class="lineNum">     242</span>              : //------------------------------------------------------------------------------</span>
+<span id="L243"><span class="lineNum">     243</span>              : </span>
+<span id="L244"><span class="lineNum">     244</span> <span class="tlaGNC tlaBgGNC">           2 : always_comb begin</span></span>
+<span id="L245"><span class="lineNum">     245</span> <span class="tlaGNC">           1 :     csr_wr_req  = 1'b0;</span></span>
+<span id="L246"><span class="lineNum">     246</span> <span class="tlaGNC">           1 :     csr_wr_data = '0;</span></span>
+<span id="L247"><span class="lineNum">     247</span>              : </span>
+<span id="L248"><span class="lineNum">     248</span> <span class="tlaGNC">           1 :     case (csr2tdu_cmd_i)</span></span>
+<span id="L249"><span class="lineNum">     249</span> <span class="tlaGNC">        3350 :         SCR1_CSR_CMD_WRITE: begin</span></span>
+<span id="L250"><span class="lineNum">     250</span> <span class="tlaGNC">        1675 :             csr_wr_req  = 1'b1;</span></span>
+<span id="L251"><span class="lineNum">     251</span> <span class="tlaGNC">        1675 :             csr_wr_data = csr2tdu_wdata_i;</span></span>
+<span id="L252"><span class="lineNum">     252</span>              :         end</span>
+<span id="L253"><span class="lineNum">     253</span> <span class="tlaGNC">        2712 :         SCR1_CSR_CMD_SET  : begin</span></span>
+<span id="L254"><span class="lineNum">     254</span> <span class="tlaGNC">        1356 :             csr_wr_req  = |csr2tdu_wdata_i;</span></span>
+<span id="L255"><span class="lineNum">     255</span> <span class="tlaGNC">        1356 :             csr_wr_data = tdu2csr_rdata_o | csr2tdu_wdata_i;</span></span>
+<span id="L256"><span class="lineNum">     256</span>              :         end</span>
+<span id="L257"><span class="lineNum">     257</span> <span class="tlaGNC">         102 :         SCR1_CSR_CMD_CLEAR: begin</span></span>
+<span id="L258"><span class="lineNum">     258</span> <span class="tlaGNC">          51 :             csr_wr_req  = |csr2tdu_wdata_i;</span></span>
+<span id="L259"><span class="lineNum">     259</span> <span class="tlaGNC">          51 :             csr_wr_data = tdu2csr_rdata_o &amp; ~csr2tdu_wdata_i;</span></span>
+<span id="L260"><span class="lineNum">     260</span>              :         end</span>
+<span id="L261"><span class="lineNum">     261</span> <span class="tlaGNC">     2562384 :         default : begin</span></span>
+<span id="L262"><span class="lineNum">     262</span>              :         end</span>
+<span id="L263"><span class="lineNum">     263</span>              :     endcase</span>
+<span id="L264"><span class="lineNum">     264</span>              : end</span>
+<span id="L265"><span class="lineNum">     265</span>              : </span>
+<span id="L266"><span class="lineNum">     266</span>              : // Register selection</span>
+<span id="L267"><span class="lineNum">     267</span>              : //------------------------------------------------------------------------------</span>
+<span id="L268"><span class="lineNum">     268</span>              : </span>
+<span id="L269"><span class="lineNum">     269</span> <span class="tlaGNC">           2 : always_comb begin</span></span>
+<span id="L270"><span class="lineNum">     270</span> <span class="tlaGNC">           1 :     csr_addr_tselect  = 1'b0;</span></span>
+<span id="L271"><span class="lineNum">     271</span> <span class="tlaGNC">           1 :     csr_addr_tdata2   = '0;</span></span>
+<span id="L272"><span class="lineNum">     272</span> <span class="tlaGNC">           1 :     csr_addr_mcontrol = '0;</span></span>
+<span id="L273"><span class="lineNum">     273</span>              : `ifdef SCR1_TDU_ICOUNT_EN</span>
+<span id="L274"><span class="lineNum">     274</span> <span class="tlaGNC">           1 :     csr_addr_icount   = '0;</span></span>
+<span id="L275"><span class="lineNum">     275</span>              : `endif // SCR1_TDU_ICOUNT_EN</span>
+<span id="L276"><span class="lineNum">     276</span>              : </span>
+<span id="L277"><span class="lineNum">     277</span> <span class="tlaUNC tlaBgUNC">           0 :     if (csr2tdu_req_i) begin</span></span>
+<span id="L278"><span class="lineNum">     278</span> <span class="tlaUNC">           0 :         case (csr2tdu_addr_i)</span></span>
+<span id="L279"><span class="lineNum">     279</span> <span class="tlaUNC">           0 :             SCR1_CSR_ADDR_TDU_OFFS_TSELECT: begin</span></span>
+<span id="L280"><span class="lineNum">     280</span> <span class="tlaUNC">           0 :                 csr_addr_tselect = 1'b1;</span></span>
+<span id="L281"><span class="lineNum">     281</span>              :             end</span>
+<span id="L282"><span class="lineNum">     282</span> <span class="tlaUNC">           0 :             SCR1_CSR_ADDR_TDU_OFFS_TDATA1 : begin</span></span>
+<span id="L283"><span class="lineNum">     283</span> <span class="tlaUNC">           0 :                 for(int unsigned i = 0; i &lt; MTRIG_NUM; ++i) begin</span></span>
+<span id="L284"><span class="lineNum">     284</span> <span class="tlaUNC">           0 :                     if(csr_tselect_ff == ALLTRIG_W'(i)) begin</span></span>
+<span id="L285"><span class="lineNum">     285</span> <span class="tlaUNC">           0 :                         csr_addr_mcontrol[i] = 1'b1;</span></span>
+<span id="L286"><span class="lineNum">     286</span>              :                     end</span>
+<span id="L287"><span class="lineNum">     287</span>              :                 end</span>
+<span id="L288"><span class="lineNum">     288</span>              : `ifdef SCR1_TDU_ICOUNT_EN</span>
+<span id="L289"><span class="lineNum">     289</span> <span class="tlaUNC">           0 :                 if(csr_tselect_ff == ALLTRIG_W'(SCR1_TDU_ALLTRIG_NUM - 1'b1)) begin</span></span>
+<span id="L290"><span class="lineNum">     290</span> <span class="tlaUNC">           0 :                     csr_addr_icount = 1'b1;</span></span>
+<span id="L291"><span class="lineNum">     291</span>              :                 end</span>
+<span id="L292"><span class="lineNum">     292</span>              : `endif // SCR1_TDU_ICOUNT_EN</span>
+<span id="L293"><span class="lineNum">     293</span>              :             end</span>
+<span id="L294"><span class="lineNum">     294</span> <span class="tlaUNC">           0 :             SCR1_CSR_ADDR_TDU_OFFS_TDATA2 : begin</span></span>
+<span id="L295"><span class="lineNum">     295</span> <span class="tlaUNC">           0 :                 for(int unsigned i = 0; i &lt; MTRIG_NUM; ++i) begin</span></span>
+<span id="L296"><span class="lineNum">     296</span> <span class="tlaUNC">           0 :                     if(csr_tselect_ff == ALLTRIG_W'(i) ) begin</span></span>
+<span id="L297"><span class="lineNum">     297</span> <span class="tlaUNC">           0 :                         csr_addr_tdata2[i] = 1'b1;</span></span>
+<span id="L298"><span class="lineNum">     298</span>              :                     end</span>
+<span id="L299"><span class="lineNum">     299</span>              :                 end</span>
+<span id="L300"><span class="lineNum">     300</span>              :             end</span>
+<span id="L301"><span class="lineNum">     301</span> <span class="tlaUNC">           0 :             default : begin</span></span>
+<span id="L302"><span class="lineNum">     302</span>              :             end</span>
+<span id="L303"><span class="lineNum">     303</span>              :         endcase</span>
+<span id="L304"><span class="lineNum">     304</span>              :     end</span>
+<span id="L305"><span class="lineNum">     305</span>              : end</span>
+<span id="L306"><span class="lineNum">     306</span>              : </span>
+<span id="L307"><span class="lineNum">     307</span>              : //------------------------------------------------------------------------------</span>
+<span id="L308"><span class="lineNum">     308</span>              : // TDU CSRs</span>
+<span id="L309"><span class="lineNum">     309</span>              : //------------------------------------------------------------------------------</span>
+<span id="L310"><span class="lineNum">     310</span>              : //</span>
+<span id="L311"><span class="lineNum">     311</span>              :  // TDU CSRs consist of the following registers:</span>
+<span id="L312"><span class="lineNum">     312</span>              :  // - TSELECT</span>
+<span id="L313"><span class="lineNum">     313</span>              :  // - TDATA1/MCONTROL/ICOUNT (depending on the type field value)</span>
+<span id="L314"><span class="lineNum">     314</span>              :  // - TDATA2</span>
+<span id="L315"><span class="lineNum">     315</span>              : //</span>
+<span id="L316"><span class="lineNum">     316</span>              : </span>
+<span id="L317"><span class="lineNum">     317</span>              : // TSELECT register</span>
+<span id="L318"><span class="lineNum">     318</span>              : //------------------------------------------------------------------------------</span>
+<span id="L319"><span class="lineNum">     319</span>              : // Determines which trigger is accessible through the other trigger registers</span>
+<span id="L320"><span class="lineNum">     320</span>              : </span>
+<span id="L321"><span class="lineNum">     321</span>              : assign csr_tselect_upd = clk_en &amp; csr_addr_tselect &amp; csr_wr_req</span>
+<span id="L322"><span class="lineNum">     322</span>              :                        &amp; (csr_wr_data[ALLTRIG_W-1:0] &lt; ALLTRIG_W'(ALLTRIG_NUM));</span>
+<span id="L323"><span class="lineNum">     323</span>              : </span>
+<span id="L324"><span class="lineNum">     324</span> <span class="tlaGNC tlaBgGNC">     2568992 : always_ff @(negedge rst_n, posedge clk) begin</span></span>
+<span id="L325"><span class="lineNum">     325</span> <span class="tlaGNC">        3586 :     if(~rst_n) begin</span></span>
+<span id="L326"><span class="lineNum">     326</span> <span class="tlaGNC">        1793 :         csr_tselect_ff &lt;= '0;</span></span>
+<span id="L327"><span class="lineNum">     327</span> <span class="tlaUNC tlaBgUNC">           0 :     end else if(csr_tselect_upd) begin</span></span>
+<span id="L328"><span class="lineNum">     328</span> <span class="tlaUNC">           0 :         csr_tselect_ff &lt;= csr_wr_data[ALLTRIG_W-1:0];</span></span>
+<span id="L329"><span class="lineNum">     329</span>              :     end</span>
+<span id="L330"><span class="lineNum">     330</span>              : end</span>
+<span id="L331"><span class="lineNum">     331</span>              : </span>
+<span id="L332"><span class="lineNum">     332</span>              : `ifdef SCR1_TDU_ICOUNT_EN</span>
+<span id="L333"><span class="lineNum">     333</span>              : // ICOUNT register</span>
+<span id="L334"><span class="lineNum">     334</span>              : //------------------------------------------------------------------------------</span>
+<span id="L335"><span class="lineNum">     335</span>              : // Provides a trigger that fires when the certain number of instructions has retired</span>
+<span id="L336"><span class="lineNum">     336</span>              : // Is intended to be used as a single step trigger (in this case count must be 1)</span>
+<span id="L337"><span class="lineNum">     337</span>              : </span>
+<span id="L338"><span class="lineNum">     338</span>              : assign csr_icount_wr_req = csr_addr_icount &amp; csr_wr_req;</span>
+<span id="L339"><span class="lineNum">     339</span>              : assign csr_icount_clk_en = clk_en &amp; (csr_icount_wr_req | csr_icount_m_ff);</span>
+<span id="L340"><span class="lineNum">     340</span>              : assign csr_icount_upd    = ~csr_icount_dmode_ff</span>
+<span id="L341"><span class="lineNum">     341</span>              :                          ? csr_icount_wr_req</span>
+<span id="L342"><span class="lineNum">     342</span>              :                          : tdu_dsbl_i &amp; csr_icount_wr_req;</span>
+<span id="L343"><span class="lineNum">     343</span>              : </span>
+<span id="L344"><span class="lineNum">     344</span> <span class="tlaGNC tlaBgGNC">     2568992 : always_ff @(negedge rst_n, posedge clk) begin</span></span>
+<span id="L345"><span class="lineNum">     345</span> <span class="tlaGNC">        3586 :     if(~rst_n) begin</span></span>
+<span id="L346"><span class="lineNum">     346</span> <span class="tlaGNC">        1793 :         csr_icount_dmode_ff  &lt;= 1'b0;</span></span>
+<span id="L347"><span class="lineNum">     347</span> <span class="tlaGNC">        1793 :         csr_icount_m_ff      &lt;= 1'b0;</span></span>
+<span id="L348"><span class="lineNum">     348</span> <span class="tlaGNC">        1793 :         csr_icount_action_ff &lt;= 1'b0;</span></span>
+<span id="L349"><span class="lineNum">     349</span> <span class="tlaGNC">        1793 :         csr_icount_hit_ff    &lt;= 1'b0;</span></span>
+<span id="L350"><span class="lineNum">     350</span> <span class="tlaGNC">        1793 :         csr_icount_count_ff  &lt;= '0;</span></span>
+<span id="L351"><span class="lineNum">     351</span> <span class="tlaGNC">        1793 :         csr_icount_skip_ff   &lt;= 1'b0;</span></span>
+<span id="L352"><span class="lineNum">     352</span> <span class="tlaUNC tlaBgUNC">           0 :     end else if (csr_icount_clk_en) begin</span></span>
+<span id="L353"><span class="lineNum">     353</span> <span class="tlaUNC">           0 :         csr_icount_dmode_ff  &lt;= csr_icount_dmode_next;</span></span>
+<span id="L354"><span class="lineNum">     354</span> <span class="tlaUNC">           0 :         csr_icount_m_ff      &lt;= csr_icount_m_next;</span></span>
+<span id="L355"><span class="lineNum">     355</span> <span class="tlaUNC">           0 :         csr_icount_action_ff &lt;= csr_icount_action_next;</span></span>
+<span id="L356"><span class="lineNum">     356</span> <span class="tlaUNC">           0 :         csr_icount_hit_ff    &lt;= csr_icount_hit_next;</span></span>
+<span id="L357"><span class="lineNum">     357</span> <span class="tlaUNC">           0 :         csr_icount_count_ff  &lt;= csr_icount_count_next;</span></span>
+<span id="L358"><span class="lineNum">     358</span> <span class="tlaUNC">           0 :         csr_icount_skip_ff   &lt;= csr_icount_skip_next;</span></span>
+<span id="L359"><span class="lineNum">     359</span>              :     end</span>
+<span id="L360"><span class="lineNum">     360</span>              : end</span>
+<span id="L361"><span class="lineNum">     361</span>              : </span>
+<span id="L362"><span class="lineNum">     362</span>              : assign csr_icount_decr_en    = (~tdu_dsbl_i &amp; csr_icount_m_ff)</span>
+<span id="L363"><span class="lineNum">     363</span>              :                              ? exu2tdu_imon_i.vd &amp; (csr_icount_count_ff != 14'b0)</span>
+<span id="L364"><span class="lineNum">     364</span>              :                              : 1'b0;</span>
+<span id="L365"><span class="lineNum">     365</span>              : assign csr_icount_count_decr = exu2tdu_imon_i.req &amp; csr_icount_decr_en &amp; ~csr_icount_skip_ff;</span>
+<span id="L366"><span class="lineNum">     366</span>              : assign csr_icount_skip_dsbl  = exu2tdu_imon_i.req &amp; csr_icount_decr_en &amp; csr_icount_skip_ff;</span>
+<span id="L367"><span class="lineNum">     367</span>              : </span>
+<span id="L368"><span class="lineNum">     368</span> <span class="tlaGNC tlaBgGNC">           2 : always_comb begin</span></span>
+<span id="L369"><span class="lineNum">     369</span> <span class="tlaUNC tlaBgUNC">           0 :     if (csr_icount_upd) begin</span></span>
+<span id="L370"><span class="lineNum">     370</span> <span class="tlaUNC">           0 :         csr_icount_dmode_next  = csr_wr_data[SCR1_TDU_TDATA1_DMODE];</span></span>
+<span id="L371"><span class="lineNum">     371</span> <span class="tlaUNC">           0 :         csr_icount_m_next      = csr_wr_data[SCR1_TDU_ICOUNT_M];</span></span>
+<span id="L372"><span class="lineNum">     372</span> <span class="tlaUNC">           0 :         csr_icount_action_next = (csr_wr_data[SCR1_TDU_ICOUNT_ACTION_HI</span></span>
+<span id="L373"><span class="lineNum">     373</span> <span class="tlaUNC">           0 :                                              :SCR1_TDU_ICOUNT_ACTION_LO] == 'b1);</span></span>
+<span id="L374"><span class="lineNum">     374</span> <span class="tlaUNC">           0 :         csr_icount_hit_next    = csr_wr_data[SCR1_TDU_ICOUNT_HIT];</span></span>
+<span id="L375"><span class="lineNum">     375</span> <span class="tlaUNC">           0 :         csr_icount_count_next  = csr_wr_data[SCR1_TDU_ICOUNT_COUNT_HI:SCR1_TDU_ICOUNT_COUNT_LO];</span></span>
+<span id="L376"><span class="lineNum">     376</span> <span class="tlaGNC tlaBgGNC">     1284720 :     end else begin</span></span>
+<span id="L377"><span class="lineNum">     377</span> <span class="tlaGNC">     1284720 :         csr_icount_dmode_next  = csr_icount_dmode_ff;</span></span>
+<span id="L378"><span class="lineNum">     378</span> <span class="tlaGNC">     1284720 :         csr_icount_m_next      = csr_icount_m_ff;</span></span>
+<span id="L379"><span class="lineNum">     379</span> <span class="tlaGNC">     1284720 :         csr_icount_action_next = csr_icount_action_ff;</span></span>
+<span id="L380"><span class="lineNum">     380</span> <span class="tlaGNC">     1284720 :         csr_icount_hit_next    = exu2tdu_bp_retire_i[ALLTRIG_NUM - 1'b1]</span></span>
+<span id="L381"><span class="lineNum">     381</span> <span class="tlaGNC">     1284720 :                                ? 1'b1</span></span>
+<span id="L382"><span class="lineNum">     382</span> <span class="tlaGNC">     1284720 :                                : csr_icount_hit_ff;</span></span>
+<span id="L383"><span class="lineNum">     383</span> <span class="tlaGNC">     1284720 :         csr_icount_count_next  = csr_icount_count_decr</span></span>
+<span id="L384"><span class="lineNum">     384</span> <span class="tlaGNC">     1284720 :                                ? csr_icount_count_ff - 1'b1</span></span>
+<span id="L385"><span class="lineNum">     385</span> <span class="tlaGNC">     1284720 :                                : csr_icount_count_ff;</span></span>
+<span id="L386"><span class="lineNum">     386</span>              :     end</span>
+<span id="L387"><span class="lineNum">     387</span>              : end</span>
+<span id="L388"><span class="lineNum">     388</span>              : </span>
+<span id="L389"><span class="lineNum">     389</span>              : assign csr_icount_skip_next = csr_icount_wr_req    ? csr_wr_data[SCR1_TDU_ICOUNT_M]</span>
+<span id="L390"><span class="lineNum">     390</span>              :                             : csr_icount_skip_dsbl ? 1'b0</span>
+<span id="L391"><span class="lineNum">     391</span>              :                                                    : csr_icount_skip_ff;</span>
+<span id="L392"><span class="lineNum">     392</span>              : `endif // SCR1_TDU_ICOUNT_EN</span>
+<span id="L393"><span class="lineNum">     393</span>              : </span>
+<span id="L394"><span class="lineNum">     394</span>              : // MCONTROL registers</span>
+<span id="L395"><span class="lineNum">     395</span>              : //------------------------------------------------------------------------------</span>
+<span id="L396"><span class="lineNum">     396</span>              : // Provides a trigger that fires on the virtual address (stored in TDATA2) match</span>
+<span id="L397"><span class="lineNum">     397</span>              : // (load, store, exec options supported). Triggers chaining supported</span>
+<span id="L398"><span class="lineNum">     398</span>              : </span>
+<span id="L399"><span class="lineNum">     399</span>              : genvar trig;</span>
+<span id="L400"><span class="lineNum">     400</span>              : generate</span>
+<span id="L401"><span class="lineNum">     401</span> <span class="tlaUNC tlaBgUNC">           0 : for (trig = 0; $unsigned(trig) &lt; MTRIG_NUM; ++trig) begin : gblock_mtrig</span></span>
+<span id="L402"><span class="lineNum">     402</span>              : </span>
+<span id="L403"><span class="lineNum">     403</span>              : assign csr_mcontrol_wr_req[trig] = csr_addr_mcontrol[trig] &amp; csr_wr_req;</span>
+<span id="L404"><span class="lineNum">     404</span>              : assign csr_mcontrol_clk_en[trig] = clk_en</span>
+<span id="L405"><span class="lineNum">     405</span>              :                                  &amp; (csr_mcontrol_wr_req[trig] | csr_mcontrol_m_ff[trig]);</span>
+<span id="L406"><span class="lineNum">     406</span>              : assign csr_mcontrol_upd   [trig] = ~csr_mcontrol_dmode_ff[trig]</span>
+<span id="L407"><span class="lineNum">     407</span>              :                                  ? csr_mcontrol_wr_req[trig]</span>
+<span id="L408"><span class="lineNum">     408</span>              :                                  : tdu_dsbl_i &amp; csr_mcontrol_wr_req[trig];</span>
+<span id="L409"><span class="lineNum">     409</span>              : </span>
+<span id="L410"><span class="lineNum">     410</span> <span class="tlaGNC tlaBgGNC">    10275968 : always_ff @(negedge rst_n, posedge clk) begin</span></span>
+<span id="L411"><span class="lineNum">     411</span> <span class="tlaGNC">       14344 :     if(~rst_n) begin</span></span>
+<span id="L412"><span class="lineNum">     412</span> <span class="tlaGNC">        7172 :         csr_mcontrol_dmode_ff [trig] &lt;= 1'b0;</span></span>
+<span id="L413"><span class="lineNum">     413</span> <span class="tlaGNC">        7172 :         csr_mcontrol_m_ff     [trig] &lt;= 1'b0;</span></span>
+<span id="L414"><span class="lineNum">     414</span> <span class="tlaGNC">        7172 :         csr_mcontrol_exec_ff  [trig] &lt;= 1'b0;</span></span>
+<span id="L415"><span class="lineNum">     415</span> <span class="tlaGNC">        7172 :         csr_mcontrol_load_ff  [trig] &lt;= 1'b0;</span></span>
+<span id="L416"><span class="lineNum">     416</span> <span class="tlaGNC">        7172 :         csr_mcontrol_store_ff [trig] &lt;= 1'b0;</span></span>
+<span id="L417"><span class="lineNum">     417</span> <span class="tlaGNC">        7172 :         csr_mcontrol_action_ff[trig] &lt;= 1'b0;</span></span>
+<span id="L418"><span class="lineNum">     418</span> <span class="tlaGNC">        7172 :         csr_mcontrol_hit_ff   [trig] &lt;= 1'b0;</span></span>
+<span id="L419"><span class="lineNum">     419</span> <span class="tlaUNC tlaBgUNC">           0 :     end else if(csr_mcontrol_clk_en[trig]) begin</span></span>
+<span id="L420"><span class="lineNum">     420</span> <span class="tlaUNC">           0 :         csr_mcontrol_dmode_ff [trig] &lt;= csr_mcontrol_dmode_next[trig];</span></span>
+<span id="L421"><span class="lineNum">     421</span> <span class="tlaUNC">           0 :         csr_mcontrol_m_ff     [trig] &lt;= csr_mcontrol_m_next[trig];</span></span>
+<span id="L422"><span class="lineNum">     422</span> <span class="tlaUNC">           0 :         csr_mcontrol_exec_ff  [trig] &lt;= csr_mcontrol_exec_next[trig];</span></span>
+<span id="L423"><span class="lineNum">     423</span> <span class="tlaUNC">           0 :         csr_mcontrol_load_ff  [trig] &lt;= csr_mcontrol_load_next[trig];</span></span>
+<span id="L424"><span class="lineNum">     424</span> <span class="tlaUNC">           0 :         csr_mcontrol_store_ff [trig] &lt;= csr_mcontrol_store_next[trig];</span></span>
+<span id="L425"><span class="lineNum">     425</span> <span class="tlaUNC">           0 :         csr_mcontrol_action_ff[trig] &lt;= csr_mcontrol_action_next[trig];</span></span>
+<span id="L426"><span class="lineNum">     426</span> <span class="tlaUNC">           0 :         csr_mcontrol_hit_ff   [trig] &lt;= csr_mcontrol_hit_next[trig];</span></span>
+<span id="L427"><span class="lineNum">     427</span>              :     end</span>
+<span id="L428"><span class="lineNum">     428</span>              : end</span>
+<span id="L429"><span class="lineNum">     429</span>              : </span>
+<span id="L430"><span class="lineNum">     430</span> <span class="tlaGNC tlaBgGNC">           8 : always_comb begin</span></span>
+<span id="L431"><span class="lineNum">     431</span> <span class="tlaUNC tlaBgUNC">           0 :     if (csr_mcontrol_upd[trig]) begin</span></span>
+<span id="L432"><span class="lineNum">     432</span> <span class="tlaUNC">           0 :         csr_mcontrol_dmode_next [trig] = csr_wr_data[SCR1_TDU_TDATA1_DMODE];</span></span>
+<span id="L433"><span class="lineNum">     433</span> <span class="tlaUNC">           0 :         csr_mcontrol_m_next     [trig] = csr_wr_data[SCR1_TDU_MCONTROL_M];</span></span>
+<span id="L434"><span class="lineNum">     434</span> <span class="tlaUNC">           0 :         csr_mcontrol_exec_next  [trig] = csr_wr_data[SCR1_TDU_MCONTROL_EXECUTE];</span></span>
+<span id="L435"><span class="lineNum">     435</span> <span class="tlaUNC">           0 :         csr_mcontrol_load_next  [trig] = csr_wr_data[SCR1_TDU_MCONTROL_LOAD];</span></span>
+<span id="L436"><span class="lineNum">     436</span> <span class="tlaUNC">           0 :         csr_mcontrol_store_next [trig] = csr_wr_data[SCR1_TDU_MCONTROL_STORE];</span></span>
+<span id="L437"><span class="lineNum">     437</span> <span class="tlaUNC">           0 :         csr_mcontrol_action_next[trig] = (csr_wr_data[SCR1_TDU_MCONTROL_ACTION_HI</span></span>
+<span id="L438"><span class="lineNum">     438</span> <span class="tlaUNC">           0 :                                                      :SCR1_TDU_MCONTROL_ACTION_LO] == 'b1);</span></span>
+<span id="L439"><span class="lineNum">     439</span> <span class="tlaUNC">           0 :         csr_mcontrol_hit_next   [trig] = csr_wr_data[SCR1_TDU_MCONTROL_HIT];</span></span>
+<span id="L440"><span class="lineNum">     440</span> <span class="tlaGNC tlaBgGNC">     5138880 :     end else begin</span></span>
+<span id="L441"><span class="lineNum">     441</span> <span class="tlaGNC">     5138880 :         csr_mcontrol_dmode_next [trig] = csr_mcontrol_dmode_ff [trig];</span></span>
+<span id="L442"><span class="lineNum">     442</span> <span class="tlaGNC">     5138880 :         csr_mcontrol_m_next     [trig] = csr_mcontrol_m_ff     [trig];</span></span>
+<span id="L443"><span class="lineNum">     443</span> <span class="tlaGNC">     5138880 :         csr_mcontrol_exec_next  [trig] = csr_mcontrol_exec_ff  [trig];</span></span>
+<span id="L444"><span class="lineNum">     444</span> <span class="tlaGNC">     5138880 :         csr_mcontrol_load_next  [trig] = csr_mcontrol_load_ff  [trig];</span></span>
+<span id="L445"><span class="lineNum">     445</span> <span class="tlaGNC">     5138880 :         csr_mcontrol_store_next [trig] = csr_mcontrol_store_ff [trig];</span></span>
+<span id="L446"><span class="lineNum">     446</span> <span class="tlaGNC">     5138880 :         csr_mcontrol_action_next[trig] = csr_mcontrol_action_ff[trig];</span></span>
+<span id="L447"><span class="lineNum">     447</span> <span class="tlaGNC">     5138880 :         csr_mcontrol_hit_next   [trig] = exu2tdu_bp_retire_i[trig]</span></span>
+<span id="L448"><span class="lineNum">     448</span> <span class="tlaGNC">     5138880 :                                        ? 1'b1</span></span>
+<span id="L449"><span class="lineNum">     449</span> <span class="tlaGNC">     5138880 :                                        : csr_mcontrol_hit_ff[trig];</span></span>
+<span id="L450"><span class="lineNum">     450</span>              :     end</span>
+<span id="L451"><span class="lineNum">     451</span>              : end</span>
+<span id="L452"><span class="lineNum">     452</span>              : </span>
+<span id="L453"><span class="lineNum">     453</span>              : // TDATA2 register</span>
+<span id="L454"><span class="lineNum">     454</span>              : //------------------------------------------------------------------------------</span>
+<span id="L455"><span class="lineNum">     455</span>              : </span>
+<span id="L456"><span class="lineNum">     456</span>              : assign csr_tdata2_upd[trig] = ~csr_mcontrol_dmode_ff[trig]</span>
+<span id="L457"><span class="lineNum">     457</span>              :                             ? clk_en &amp; csr_addr_tdata2[trig] &amp; csr_wr_req</span>
+<span id="L458"><span class="lineNum">     458</span>              :                             : clk_en &amp; csr_addr_tdata2[trig] &amp; csr_wr_req &amp; tdu_dsbl_i;</span>
+<span id="L459"><span class="lineNum">     459</span>              : </span>
+<span id="L460"><span class="lineNum">     460</span> <span class="tlaGNC">    10274184 : always_ff @(posedge clk) begin</span></span>
+<span id="L461"><span class="lineNum">     461</span> <span class="tlaUNC tlaBgUNC">           0 :     if (csr_tdata2_upd[trig]) begin</span></span>
+<span id="L462"><span class="lineNum">     462</span> <span class="tlaUNC">           0 :         csr_tdata2_ff[trig] &lt;= csr_wr_data;</span></span>
+<span id="L463"><span class="lineNum">     463</span>              :     end</span>
+<span id="L464"><span class="lineNum">     464</span>              : end</span>
+<span id="L465"><span class="lineNum">     465</span>              : </span>
+<span id="L466"><span class="lineNum">     466</span>              : end</span>
+<span id="L467"><span class="lineNum">     467</span>              : endgenerate // gblock_mtrig</span>
+<span id="L468"><span class="lineNum">     468</span>              : </span>
+<span id="L469"><span class="lineNum">     469</span>              : //------------------------------------------------------------------------------</span>
+<span id="L470"><span class="lineNum">     470</span>              : // TDU &lt;-&gt; EXU interface</span>
+<span id="L471"><span class="lineNum">     471</span>              : //------------------------------------------------------------------------------</span>
+<span id="L472"><span class="lineNum">     472</span>              : </span>
+<span id="L473"><span class="lineNum">     473</span>              : assign csr_icount_hit = ~tdu_dsbl_i &amp; csr_icount_m_ff</span>
+<span id="L474"><span class="lineNum">     474</span>              :                       ? exu2tdu_imon_i.vd &amp; (csr_icount_count_ff == 14'b1) &amp; ~csr_icount_skip_ff</span>
+<span id="L475"><span class="lineNum">     475</span>              :                       : 1'b0;</span>
+<span id="L476"><span class="lineNum">     476</span>              : </span>
+<span id="L477"><span class="lineNum">     477</span>              : `ifndef SCR1_TDU_ICOUNT_EN</span>
+<span id="L478"><span class="lineNum">     478</span>              : assign tdu2exu_ibrkpt_match_o   = csr_mcontrol_exec_hit;</span>
+<span id="L479"><span class="lineNum">     479</span>              : assign tdu2exu_ibrkpt_exc_req_o = |csr_mcontrol_exec_hit;</span>
+<span id="L480"><span class="lineNum">     480</span>              : `else</span>
+<span id="L481"><span class="lineNum">     481</span>              : assign tdu2exu_ibrkpt_match_o   = {csr_icount_hit, csr_mcontrol_exec_hit};</span>
+<span id="L482"><span class="lineNum">     482</span>              : assign tdu2exu_ibrkpt_exc_req_o = |csr_mcontrol_exec_hit | csr_icount_hit;</span>
+<span id="L483"><span class="lineNum">     483</span>              : `endif // SCR1_TDU_ICOUNT_EN</span>
+<span id="L484"><span class="lineNum">     484</span>              : </span>
+<span id="L485"><span class="lineNum">     485</span>              : //------------------------------------------------------------------------------</span>
+<span id="L486"><span class="lineNum">     486</span>              : // TDU &lt;-&gt; LSU interface</span>
+<span id="L487"><span class="lineNum">     487</span>              : //------------------------------------------------------------------------------</span>
+<span id="L488"><span class="lineNum">     488</span>              : </span>
+<span id="L489"><span class="lineNum">     489</span>              : // Breakpoint logic</span>
+<span id="L490"><span class="lineNum">     490</span>              : //------------------------------------------------------------------------------</span>
+<span id="L491"><span class="lineNum">     491</span>              : </span>
+<span id="L492"><span class="lineNum">     492</span>              : generate</span>
+<span id="L493"><span class="lineNum">     493</span>              : for (trig = 0; $unsigned(trig) &lt; MTRIG_NUM; ++trig) begin : gblock_break_trig</span>
+<span id="L494"><span class="lineNum">     494</span>              : assign csr_mcontrol_exec_hit[trig] = ~tdu_dsbl_i</span>
+<span id="L495"><span class="lineNum">     495</span>              :                                    &amp; csr_mcontrol_m_ff[trig]</span>
+<span id="L496"><span class="lineNum">     496</span>              :                                    &amp; csr_mcontrol_exec_ff[trig]</span>
+<span id="L497"><span class="lineNum">     497</span>              :                                    &amp; exu2tdu_imon_i.vd</span>
+<span id="L498"><span class="lineNum">     498</span>              :                                    &amp; exu2tdu_imon_i.addr == csr_tdata2_ff[trig];</span>
+<span id="L499"><span class="lineNum">     499</span>              : end</span>
+<span id="L500"><span class="lineNum">     500</span>              : endgenerate</span>
+<span id="L501"><span class="lineNum">     501</span>              : </span>
+<span id="L502"><span class="lineNum">     502</span>              : `ifndef SCR1_TDU_ICOUNT_EN</span>
+<span id="L503"><span class="lineNum">     503</span>              : assign tdu2lsu_ibrkpt_exc_req_o = |csr_mcontrol_exec_hit;</span>
+<span id="L504"><span class="lineNum">     504</span>              : `else</span>
+<span id="L505"><span class="lineNum">     505</span>              : assign tdu2lsu_ibrkpt_exc_req_o = |csr_mcontrol_exec_hit | csr_icount_hit;</span>
+<span id="L506"><span class="lineNum">     506</span>              : `endif // SCR1_TDU_ICOUNT_EN</span>
+<span id="L507"><span class="lineNum">     507</span>              : </span>
+<span id="L508"><span class="lineNum">     508</span>              : // Watchpoint logic</span>
+<span id="L509"><span class="lineNum">     509</span>              : //------------------------------------------------------------------------------</span>
+<span id="L510"><span class="lineNum">     510</span>              : </span>
+<span id="L511"><span class="lineNum">     511</span>              : generate</span>
+<span id="L512"><span class="lineNum">     512</span>              : for( trig = 0; $unsigned(trig) &lt; MTRIG_NUM; ++trig ) begin : gblock_watch_trig</span>
+<span id="L513"><span class="lineNum">     513</span>              : assign csr_mcontrol_ldst_hit[trig] = ~tdu_dsbl_i</span>
+<span id="L514"><span class="lineNum">     514</span>              :                                    &amp; csr_mcontrol_m_ff[trig]</span>
+<span id="L515"><span class="lineNum">     515</span>              :                                    &amp; lsu2tdu_dmon_i.vd</span>
+<span id="L516"><span class="lineNum">     516</span>              :                                    &amp; ( (csr_mcontrol_load_ff [trig] &amp; lsu2tdu_dmon_i.load)</span>
+<span id="L517"><span class="lineNum">     517</span>              :                                      | (csr_mcontrol_store_ff[trig] &amp; lsu2tdu_dmon_i.store))</span>
+<span id="L518"><span class="lineNum">     518</span>              :                                    &amp; lsu2tdu_dmon_i.addr == csr_tdata2_ff[trig];</span>
+<span id="L519"><span class="lineNum">     519</span>              : end</span>
+<span id="L520"><span class="lineNum">     520</span>              : endgenerate</span>
+<span id="L521"><span class="lineNum">     521</span>              : </span>
+<span id="L522"><span class="lineNum">     522</span>              : assign tdu2lsu_dbrkpt_match_o   = csr_mcontrol_ldst_hit;</span>
+<span id="L523"><span class="lineNum">     523</span>              : assign tdu2lsu_dbrkpt_exc_req_o = |csr_mcontrol_ldst_hit;</span>
+<span id="L524"><span class="lineNum">     524</span>              : </span>
+<span id="L525"><span class="lineNum">     525</span>              : `ifndef SCR1_TDU_EN</span>
+<span id="L526"><span class="lineNum">     526</span>              : assign tdu2lsu_brk_en_o = |csr_mcontrol_m_ff | csr_icount_m_ff;</span>
+<span id="L527"><span class="lineNum">     527</span>              : `endif // SCR1_TDU_EN</span>
+<span id="L528"><span class="lineNum">     528</span>              : </span>
+<span id="L529"><span class="lineNum">     529</span>              : //------------------------------------------------------------------------------</span>
+<span id="L530"><span class="lineNum">     530</span>              : // TDU &lt;-&gt; HDU interface</span>
+<span id="L531"><span class="lineNum">     531</span>              : //------------------------------------------------------------------------------</span>
+<span id="L532"><span class="lineNum">     532</span>              : </span>
+<span id="L533"><span class="lineNum">     533</span> <span class="tlaGNC tlaBgGNC">           2 : always_comb begin</span></span>
+<span id="L534"><span class="lineNum">     534</span> <span class="tlaGNC">           1 :     tdu2hdu_dmode_req_o = 1'b0;</span></span>
+<span id="L535"><span class="lineNum">     535</span>              : </span>
+<span id="L536"><span class="lineNum">     536</span> <span class="tlaGNC">           1 :     for(int unsigned i = 0; i &lt; MTRIG_NUM; ++i) begin</span></span>
+<span id="L537"><span class="lineNum">     537</span> <span class="tlaGNC">           4 :         tdu2hdu_dmode_req_o |= (csr_mcontrol_action_ff[i] &amp; exu2tdu_bp_retire_i[i]);</span></span>
+<span id="L538"><span class="lineNum">     538</span>              :     end</span>
+<span id="L539"><span class="lineNum">     539</span>              : `ifdef SCR1_TDU_ICOUNT_EN</span>
+<span id="L540"><span class="lineNum">     540</span> <span class="tlaGNC">           1 :     tdu2hdu_dmode_req_o |= (csr_icount_action_ff &amp; exu2tdu_bp_retire_i[ALLTRIG_NUM-1]);</span></span>
+<span id="L541"><span class="lineNum">     541</span>              : `endif // SCR1_TDU_ICOUNT_EN</span>
+<span id="L542"><span class="lineNum">     542</span>              : end</span>
+<span id="L543"><span class="lineNum">     543</span>              : </span>
+<span id="L544"><span class="lineNum">     544</span>              : `ifdef SCR1_TRGT_SIMULATION</span>
+<span id="L545"><span class="lineNum">     545</span>              : //------------------------------------------------------------------------------</span>
+<span id="L546"><span class="lineNum">     546</span>              : // Assertion</span>
+<span id="L547"><span class="lineNum">     547</span>              : //------------------------------------------------------------------------------</span>
+<span id="L548"><span class="lineNum">     548</span>              : </span>
+<span id="L549"><span class="lineNum">     549</span>              : SVA_TDU_X_CONTROL : assert property (</span>
+<span id="L550"><span class="lineNum">     550</span>              :     @(negedge clk) disable iff (~rst_n)</span>
+<span id="L551"><span class="lineNum">     551</span>              :     !$isunknown({clk_en, tdu_dsbl_i, csr2tdu_req_i,</span>
+<span id="L552"><span class="lineNum">     552</span>              :                  exu2tdu_imon_i.vd, lsu2tdu_dmon_i.vd, exu2tdu_bp_retire_i})</span>
+<span id="L553"><span class="lineNum">     553</span>              :     ) else $error(&quot;TDU Error: control signals is X - %0b&quot;, {clk_en,</span>
+<span id="L554"><span class="lineNum">     554</span>              :     tdu_dsbl_i, csr2tdu_req_i, exu2tdu_imon_i.vd, lsu2tdu_dmon_i.vd, exu2tdu_bp_retire_i});</span>
+<span id="L555"><span class="lineNum">     555</span>              : </span>
+<span id="L556"><span class="lineNum">     556</span>              : SVA_DM_X_CLK_EN : assert property (</span>
+<span id="L557"><span class="lineNum">     557</span>              :     @(negedge clk) disable iff (~rst_n)</span>
+<span id="L558"><span class="lineNum">     558</span>              :     !$isunknown(clk_en)</span>
+<span id="L559"><span class="lineNum">     559</span>              :     ) else $error(&quot;TDU Error: clk_en control signals is X&quot;);</span>
+<span id="L560"><span class="lineNum">     560</span>              : </span>
+<span id="L561"><span class="lineNum">     561</span>              : SVA_DM_X_DSBL : assert property (</span>
+<span id="L562"><span class="lineNum">     562</span>              :     @(negedge clk) disable iff (~rst_n)</span>
+<span id="L563"><span class="lineNum">     563</span>              :     !$isunknown(tdu_dsbl_i)</span>
+<span id="L564"><span class="lineNum">     564</span>              :     ) else $error(&quot;TDU Error: tdu_dsbl_i control signals is X&quot;);</span>
+<span id="L565"><span class="lineNum">     565</span>              : </span>
+<span id="L566"><span class="lineNum">     566</span>              : SVA_DM_X_CSR2TDU_REQ : assert property (</span>
+<span id="L567"><span class="lineNum">     567</span>              :     @(negedge clk) disable iff (~rst_n)</span>
+<span id="L568"><span class="lineNum">     568</span>              :     !$isunknown(csr2tdu_req_i)</span>
+<span id="L569"><span class="lineNum">     569</span>              :     ) else $error(&quot;TDU Error: csr2tdu_req_i control signals is X&quot;);</span>
+<span id="L570"><span class="lineNum">     570</span>              : </span>
+<span id="L571"><span class="lineNum">     571</span>              : SVA_DM_X_I_MON_VD : assert property (</span>
+<span id="L572"><span class="lineNum">     572</span>              :     @(negedge clk) disable iff (~rst_n)</span>
+<span id="L573"><span class="lineNum">     573</span>              :     !$isunknown(exu2tdu_imon_i.vd)</span>
+<span id="L574"><span class="lineNum">     574</span>              :     ) else $error(&quot;TDU Error: exu2tdu_imon_i.vd control signals is X&quot;);</span>
+<span id="L575"><span class="lineNum">     575</span>              : </span>
+<span id="L576"><span class="lineNum">     576</span>              : SVA_DM_X_D_MON_VD : assert property (</span>
+<span id="L577"><span class="lineNum">     577</span>              :     @(negedge clk) disable iff (~rst_n)</span>
+<span id="L578"><span class="lineNum">     578</span>              :     !$isunknown(lsu2tdu_dmon_i.vd)</span>
+<span id="L579"><span class="lineNum">     579</span>              :     ) else $error(&quot;TDU Error: lsu2tdu_dmon_i.vd control signals is X&quot;);</span>
+<span id="L580"><span class="lineNum">     580</span>              : </span>
+<span id="L581"><span class="lineNum">     581</span>              : SVA_DM_X_BP_RETIRE : assert property (</span>
+<span id="L582"><span class="lineNum">     582</span>              :     @(negedge clk) disable iff (~rst_n)</span>
+<span id="L583"><span class="lineNum">     583</span>              :     !$isunknown(exu2tdu_bp_retire_i)</span>
+<span id="L584"><span class="lineNum">     584</span>              :     ) else $error(&quot;TDU Error: exu2tdu_bp_retire_i control signals is X&quot;);</span>
+<span id="L585"><span class="lineNum">     585</span>              : </span>
+<span id="L586"><span class="lineNum">     586</span>              : SVA_TDU_X_CSR : assert property (</span>
+<span id="L587"><span class="lineNum">     587</span>              :     @(negedge clk) disable iff (~rst_n)</span>
+<span id="L588"><span class="lineNum">     588</span>              :     csr2tdu_req_i |-&gt; !$isunknown({csr2tdu_cmd_i,csr2tdu_addr_i})</span>
+<span id="L589"><span class="lineNum">     589</span>              :     ) else $error(&quot;TDU Error: csr is X&quot;);</span>
+<span id="L590"><span class="lineNum">     590</span>              : </span>
+<span id="L591"><span class="lineNum">     591</span>              : SVA_TDU_XW_CSR : assert property (</span>
+<span id="L592"><span class="lineNum">     592</span>              :     @(negedge clk) disable iff (~rst_n)</span>
+<span id="L593"><span class="lineNum">     593</span>              :     (csr2tdu_req_i &amp; csr_wr_req) |-&gt; !$isunknown(csr2tdu_wdata_i)</span>
+<span id="L594"><span class="lineNum">     594</span>              :     ) else $error(&quot;TDU Error: csr wdata is X &quot;);</span>
+<span id="L595"><span class="lineNum">     595</span>              : </span>
+<span id="L596"><span class="lineNum">     596</span>              : SVA_TDU_X_IMON : assert property (</span>
+<span id="L597"><span class="lineNum">     597</span>              :     @(negedge clk) disable iff (~rst_n)</span>
+<span id="L598"><span class="lineNum">     598</span>              :     exu2tdu_imon_i.vd |-&gt; !$isunknown({exu2tdu_imon_i.req,exu2tdu_imon_i.addr})</span>
+<span id="L599"><span class="lineNum">     599</span>              :     ) else $error(&quot;TDU Error: imonitor is X&quot;);</span>
+<span id="L600"><span class="lineNum">     600</span>              : </span>
+<span id="L601"><span class="lineNum">     601</span>              : SVA_TDU_X_DMON : assert property (</span>
+<span id="L602"><span class="lineNum">     602</span>              :     @(negedge clk) disable iff (~rst_n)</span>
+<span id="L603"><span class="lineNum">     603</span>              :     lsu2tdu_dmon_i.vd |-&gt; !$isunknown({lsu2tdu_dmon_i})</span>
+<span id="L604"><span class="lineNum">     604</span>              :     ) else $error(&quot;TDU Error: dmonitor is X&quot;);</span>
+<span id="L605"><span class="lineNum">     605</span>              : </span>
+<span id="L606"><span class="lineNum">     606</span>              : `endif // SCR1_TRGT_SIMULATION</span>
+<span id="L607"><span class="lineNum">     607</span>              : </span>
+<span id="L608"><span class="lineNum">     608</span>              : endmodule : scr1_pipe_tdu</span>
+<span id="L609"><span class="lineNum">     609</span>              : </span>
+<span id="L610"><span class="lineNum">     610</span>              : `endif // SCR1_TDU_EN</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

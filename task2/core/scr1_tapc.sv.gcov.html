@@ -1,0 +1,533 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - core/scr1_tapc.sv</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">core</a> - scr1_tapc.sv<span style="font-size: 80%;"> (source / <a href="scr1_tapc.sv.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">16.5&nbsp;%</td>
+            <td class="headerCovTableEntry">115</td>
+            <td class="headerCovTableEntry">19</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2023-12-19 23:18:55</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryHi">-</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+                  <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /// Copyright by Syntacore LLC © 2016-2021. See LICENSE for details</span>
+<span id="L2"><span class="lineNum">       2</span>              : /// @file       &lt;scr1_tapc.sv&gt;</span>
+<span id="L3"><span class="lineNum">       3</span>              : /// @brief      TAP Controller (TAPC)</span>
+<span id="L4"><span class="lineNum">       4</span>              : ///</span>
+<span id="L5"><span class="lineNum">       5</span>              : </span>
+<span id="L6"><span class="lineNum">       6</span>              : //------------------------------------------------------------------------------</span>
+<span id="L7"><span class="lineNum">       7</span>              :  //</span>
+<span id="L8"><span class="lineNum">       8</span>              :  // Functionality:</span>
+<span id="L9"><span class="lineNum">       9</span>              :  // - Controls TAP operation</span>
+<span id="L10"><span class="lineNum">      10</span>              :  // - Allows debugger to access TAP Data registers and DMI/SCU scan-chains via</span>
+<span id="L11"><span class="lineNum">      11</span>              :  //   command written in Instruction register</span>
+<span id="L12"><span class="lineNum">      12</span>              :  //</span>
+<span id="L13"><span class="lineNum">      13</span>              :  // Structure:</span>
+<span id="L14"><span class="lineNum">      14</span>              :  // - Synchronous reset generation</span>
+<span id="L15"><span class="lineNum">      15</span>              :  // - TAPC FSM</span>
+<span id="L16"><span class="lineNum">      16</span>              :  // - TAPC Instruction Registers</span>
+<span id="L17"><span class="lineNum">      17</span>              :  // - TAPC DRs/DMI/SCU scan-chains</span>
+<span id="L18"><span class="lineNum">      18</span>              :  // - TAPC TDO enable and output Registers</span>
+<span id="L19"><span class="lineNum">      19</span>              :  // - TAPC Data Registers</span>
+<span id="L20"><span class="lineNum">      20</span>              :  //   - BYPASS</span>
+<span id="L21"><span class="lineNum">      21</span>              :  //   - IDCODE</span>
+<span id="L22"><span class="lineNum">      22</span>              :  //   - BUILD ID</span>
+<span id="L23"><span class="lineNum">      23</span>              :  //</span>
+<span id="L24"><span class="lineNum">      24</span>              : //------------------------------------------------------------------------------</span>
+<span id="L25"><span class="lineNum">      25</span>              : </span>
+<span id="L26"><span class="lineNum">      26</span>              : `include &quot;scr1_arch_description.svh&quot;</span>
+<span id="L27"><span class="lineNum">      27</span>              : </span>
+<span id="L28"><span class="lineNum">      28</span>              : `ifdef SCR1_DBG_EN</span>
+<span id="L29"><span class="lineNum">      29</span>              : `include &quot;scr1_tapc.svh&quot;</span>
+<span id="L30"><span class="lineNum">      30</span>              : `include &quot;scr1_dm.svh&quot;</span>
+<span id="L31"><span class="lineNum">      31</span>              : </span>
+<span id="L32"><span class="lineNum">      32</span>              : module scr1_tapc (</span>
+<span id="L33"><span class="lineNum">      33</span>              :     // JTAG signals</span>
+<span id="L34"><span class="lineNum">      34</span>              :     input   logic                                   tapc_trst_n,                    // Test Reset (TRSTn)</span>
+<span id="L35"><span class="lineNum">      35</span>              :     input   logic                                   tapc_tck,                       // Test Clock (TCK)</span>
+<span id="L36"><span class="lineNum">      36</span>              :     input   logic                                   tapc_tms,                       // Test Mode Select (TMS)</span>
+<span id="L37"><span class="lineNum">      37</span>              :     input   logic                                   tapc_tdi,                       // Test Data Input (TDI)</span>
+<span id="L38"><span class="lineNum">      38</span>              :     output  logic                                   tapc_tdo,                       // Test Data Output (TDO)</span>
+<span id="L39"><span class="lineNum">      39</span>              :     output  logic                                   tapc_tdo_en,                    // TDO Enable, signal for TDO buffer control</span>
+<span id="L40"><span class="lineNum">      40</span>              : </span>
+<span id="L41"><span class="lineNum">      41</span>              :     // Fuses:</span>
+<span id="L42"><span class="lineNum">      42</span>              :     input   logic [31:0]                            soc2tapc_fuse_idcode_i,         // IDCODE value from fuses</span>
+<span id="L43"><span class="lineNum">      43</span>              : </span>
+<span id="L44"><span class="lineNum">      44</span>              :     // DMI/SCU scan-chains</span>
+<span id="L45"><span class="lineNum">      45</span>              :     output  logic                                   tapc2tapcsync_scu_ch_sel_o,     // SCU Chain Select</span>
+<span id="L46"><span class="lineNum">      46</span>              :     output  logic                                   tapc2tapcsync_dmi_ch_sel_o,     // DMI Chain Select</span>
+<span id="L47"><span class="lineNum">      47</span>              :     output  logic [SCR1_DBG_DMI_CH_ID_WIDTH-1:0]    tapc2tapcsync_ch_id_o,          // DMI/SCU Chain Identifier</span>
+<span id="L48"><span class="lineNum">      48</span>              :     output  logic                                   tapc2tapcsync_ch_capture_o,     // DMI/SCU Chain Capture</span>
+<span id="L49"><span class="lineNum">      49</span>              :     output  logic                                   tapc2tapcsync_ch_shift_o,       // DMI/SCU Chain Shift</span>
+<span id="L50"><span class="lineNum">      50</span>              :     output  logic                                   tapc2tapcsync_ch_update_o,      // DMI/SCU Chain Update</span>
+<span id="L51"><span class="lineNum">      51</span>              :     output  logic                                   tapc2tapcsync_ch_tdi_o,         // DMI/SCU Chain TDI</span>
+<span id="L52"><span class="lineNum">      52</span>              :     input   logic                                   tapcsync2tapc_ch_tdo_i          // DMI/SCU Chain TDO</span>
+<span id="L53"><span class="lineNum">      53</span>              : );</span>
+<span id="L54"><span class="lineNum">      54</span>              : </span>
+<span id="L55"><span class="lineNum">      55</span>              : //------------------------------------------------------------------------------</span>
+<span id="L56"><span class="lineNum">      56</span>              : // Local Signals</span>
+<span id="L57"><span class="lineNum">      57</span>              : //------------------------------------------------------------------------------</span>
+<span id="L58"><span class="lineNum">      58</span>              : </span>
+<span id="L59"><span class="lineNum">      59</span>              : logic                                       trst_n_int;       // Sync reset signal</span>
+<span id="L60"><span class="lineNum">      60</span>              : </span>
+<span id="L61"><span class="lineNum">      61</span>              : // TAPC FSM signals</span>
+<span id="L62"><span class="lineNum">      62</span>              : //------------------------------------------------------------------------------</span>
+<span id="L63"><span class="lineNum">      63</span>              : </span>
+<span id="L64"><span class="lineNum">      64</span>              : type_scr1_tap_state_e                       tap_fsm_ff;       // TAP's current state</span>
+<span id="L65"><span class="lineNum">      65</span>              : type_scr1_tap_state_e                       tap_fsm_next;     // TAP's next state</span>
+<span id="L66"><span class="lineNum">      66</span>              : </span>
+<span id="L67"><span class="lineNum">      67</span>              : // Control signals</span>
+<span id="L68"><span class="lineNum">      68</span>              : logic                                       tap_fsm_reset;</span>
+<span id="L69"><span class="lineNum">      69</span>              : logic                                       tap_fsm_ir_upd;</span>
+<span id="L70"><span class="lineNum">      70</span>              : logic                                       tap_fsm_ir_cap;</span>
+<span id="L71"><span class="lineNum">      71</span>              : logic                                       tap_fsm_ir_shft;</span>
+<span id="L72"><span class="lineNum">      72</span>              : </span>
+<span id="L73"><span class="lineNum">      73</span>              : // Registered control signals</span>
+<span id="L74"><span class="lineNum">      74</span>              : logic                                       tap_fsm_ir_shift_ff;</span>
+<span id="L75"><span class="lineNum">      75</span>              : logic                                       tap_fsm_ir_shift_next;</span>
+<span id="L76"><span class="lineNum">      76</span>              : logic                                       tap_fsm_dr_capture_ff;</span>
+<span id="L77"><span class="lineNum">      77</span>              : logic                                       tap_fsm_dr_capture_next;</span>
+<span id="L78"><span class="lineNum">      78</span>              : logic                                       tap_fsm_dr_shift_ff;</span>
+<span id="L79"><span class="lineNum">      79</span>              : logic                                       tap_fsm_dr_shift_next;</span>
+<span id="L80"><span class="lineNum">      80</span>              : logic                                       tap_fsm_dr_update_ff;</span>
+<span id="L81"><span class="lineNum">      81</span>              : logic                                       tap_fsm_dr_update_next;</span>
+<span id="L82"><span class="lineNum">      82</span>              : </span>
+<span id="L83"><span class="lineNum">      83</span>              : // TAPC Instruction Registers signals</span>
+<span id="L84"><span class="lineNum">      84</span>              : //------------------------------------------------------------------------------</span>
+<span id="L85"><span class="lineNum">      85</span>              : </span>
+<span id="L86"><span class="lineNum">      86</span>              : logic [SCR1_TAP_INSTRUCTION_WIDTH-1:0]      tap_ir_shift_ff;   // Instruction Shift Register</span>
+<span id="L87"><span class="lineNum">      87</span>              : logic [SCR1_TAP_INSTRUCTION_WIDTH-1:0]      tap_ir_shift_next; // Instruction Shift Register next value</span>
+<span id="L88"><span class="lineNum">      88</span>              : logic [SCR1_TAP_INSTRUCTION_WIDTH-1:0]      tap_ir_ff;         // Instruction Register</span>
+<span id="L89"><span class="lineNum">      89</span>              : logic [SCR1_TAP_INSTRUCTION_WIDTH-1:0]      tap_ir_next;       // Instruction Register next value</span>
+<span id="L90"><span class="lineNum">      90</span>              : </span>
+<span id="L91"><span class="lineNum">      91</span>              : // TAPC Data Registers signals</span>
+<span id="L92"><span class="lineNum">      92</span>              : //------------------------------------------------------------------------------</span>
+<span id="L93"><span class="lineNum">      93</span>              : </span>
+<span id="L94"><span class="lineNum">      94</span>              : // BYPASS register</span>
+<span id="L95"><span class="lineNum">      95</span>              : logic                                       dr_bypass_sel;</span>
+<span id="L96"><span class="lineNum">      96</span>              : logic                                       dr_bypass_tdo;</span>
+<span id="L97"><span class="lineNum">      97</span>              : </span>
+<span id="L98"><span class="lineNum">      98</span>              : // IDCODE register</span>
+<span id="L99"><span class="lineNum">      99</span>              : logic                                       dr_idcode_sel;</span>
+<span id="L100"><span class="lineNum">     100</span>              : logic                                       dr_idcode_tdo;</span>
+<span id="L101"><span class="lineNum">     101</span>              : </span>
+<span id="L102"><span class="lineNum">     102</span>              : // BUILD ID register</span>
+<span id="L103"><span class="lineNum">     103</span>              : logic                                       dr_bld_id_sel;</span>
+<span id="L104"><span class="lineNum">     104</span>              : logic                                       dr_bld_id_tdo;</span>
+<span id="L105"><span class="lineNum">     105</span>              : </span>
+<span id="L106"><span class="lineNum">     106</span>              : logic                                       dr_out;</span>
+<span id="L107"><span class="lineNum">     107</span>              : </span>
+<span id="L108"><span class="lineNum">     108</span>              : // TDO registers</span>
+<span id="L109"><span class="lineNum">     109</span>              : //------------------------------------------------------------------------------</span>
+<span id="L110"><span class="lineNum">     110</span>              : </span>
+<span id="L111"><span class="lineNum">     111</span>              : // TDO enable register</span>
+<span id="L112"><span class="lineNum">     112</span>              : logic                                       tdo_en_ff;</span>
+<span id="L113"><span class="lineNum">     113</span>              : logic                                       tdo_en_next;</span>
+<span id="L114"><span class="lineNum">     114</span>              : </span>
+<span id="L115"><span class="lineNum">     115</span>              : // TDO output register</span>
+<span id="L116"><span class="lineNum">     116</span>              : logic                                       tdo_out_ff;</span>
+<span id="L117"><span class="lineNum">     117</span>              : logic                                       tdo_out_next;</span>
+<span id="L118"><span class="lineNum">     118</span>              : </span>
+<span id="L119"><span class="lineNum">     119</span>              : //------------------------------------------------------------------------------</span>
+<span id="L120"><span class="lineNum">     120</span>              : // TAPC Synchronous Reset logic</span>
+<span id="L121"><span class="lineNum">     121</span>              : //------------------------------------------------------------------------------</span>
+<span id="L122"><span class="lineNum">     122</span>              : </span>
+<span id="L123"><span class="lineNum">     123</span> <span class="tlaUNC tlaBgUNC">           0 : always_ff @(negedge tapc_tck, negedge tapc_trst_n) begin</span></span>
+<span id="L124"><span class="lineNum">     124</span> <span class="tlaUNC">           0 :     if (~tapc_trst_n) begin</span></span>
+<span id="L125"><span class="lineNum">     125</span> <span class="tlaUNC">           0 :         trst_n_int &lt;= 1'b0;</span></span>
+<span id="L126"><span class="lineNum">     126</span> <span class="tlaUNC">           0 :     end else begin</span></span>
+<span id="L127"><span class="lineNum">     127</span> <span class="tlaUNC">           0 :         trst_n_int &lt;= ~tap_fsm_reset;</span></span>
+<span id="L128"><span class="lineNum">     128</span>              :     end</span>
+<span id="L129"><span class="lineNum">     129</span>              : end</span>
+<span id="L130"><span class="lineNum">     130</span>              : </span>
+<span id="L131"><span class="lineNum">     131</span>              : //------------------------------------------------------------------------------</span>
+<span id="L132"><span class="lineNum">     132</span>              : // TAP's FSM</span>
+<span id="L133"><span class="lineNum">     133</span>              : //------------------------------------------------------------------------------</span>
+<span id="L134"><span class="lineNum">     134</span>              : </span>
+<span id="L135"><span class="lineNum">     135</span> <span class="tlaUNC">           0 : always_ff @(posedge tapc_tck, negedge tapc_trst_n) begin</span></span>
+<span id="L136"><span class="lineNum">     136</span> <span class="tlaUNC">           0 :     if (~tapc_trst_n) begin</span></span>
+<span id="L137"><span class="lineNum">     137</span> <span class="tlaUNC">           0 :         tap_fsm_ff &lt;= SCR1_TAP_STATE_RESET;</span></span>
+<span id="L138"><span class="lineNum">     138</span> <span class="tlaUNC">           0 :     end else begin</span></span>
+<span id="L139"><span class="lineNum">     139</span> <span class="tlaUNC">           0 :         tap_fsm_ff &lt;= tap_fsm_next;</span></span>
+<span id="L140"><span class="lineNum">     140</span>              :     end</span>
+<span id="L141"><span class="lineNum">     141</span>              : end</span>
+<span id="L142"><span class="lineNum">     142</span>              : </span>
+<span id="L143"><span class="lineNum">     143</span> <span class="tlaGNC tlaBgGNC">           2 : always_comb begin</span></span>
+<span id="L144"><span class="lineNum">     144</span> <span class="tlaGNC">           1 :     case (tap_fsm_ff)</span></span>
+<span id="L145"><span class="lineNum">     145</span> <span class="tlaGNC">           2 :         SCR1_TAP_STATE_RESET      : tap_fsm_next = tapc_tms ? SCR1_TAP_STATE_RESET        : SCR1_TAP_STATE_IDLE;</span></span>
+<span id="L146"><span class="lineNum">     146</span> <span class="tlaUNC tlaBgUNC">           0 :         SCR1_TAP_STATE_IDLE       : tap_fsm_next = tapc_tms ? SCR1_TAP_STATE_DR_SEL_SCAN  : SCR1_TAP_STATE_IDLE;</span></span>
+<span id="L147"><span class="lineNum">     147</span> <span class="tlaUNC">           0 :         SCR1_TAP_STATE_DR_SEL_SCAN: tap_fsm_next = tapc_tms ? SCR1_TAP_STATE_IR_SEL_SCAN  : SCR1_TAP_STATE_DR_CAPTURE;</span></span>
+<span id="L148"><span class="lineNum">     148</span> <span class="tlaUNC">           0 :         SCR1_TAP_STATE_DR_CAPTURE : tap_fsm_next = tapc_tms ? SCR1_TAP_STATE_DR_EXIT1     : SCR1_TAP_STATE_DR_SHIFT;</span></span>
+<span id="L149"><span class="lineNum">     149</span> <span class="tlaUNC">           0 :         SCR1_TAP_STATE_DR_SHIFT   : tap_fsm_next = tapc_tms ? SCR1_TAP_STATE_DR_EXIT1     : SCR1_TAP_STATE_DR_SHIFT;</span></span>
+<span id="L150"><span class="lineNum">     150</span> <span class="tlaUNC">           0 :         SCR1_TAP_STATE_DR_EXIT1   : tap_fsm_next = tapc_tms ? SCR1_TAP_STATE_DR_UPDATE    : SCR1_TAP_STATE_DR_PAUSE;</span></span>
+<span id="L151"><span class="lineNum">     151</span> <span class="tlaUNC">           0 :         SCR1_TAP_STATE_DR_PAUSE   : tap_fsm_next = tapc_tms ? SCR1_TAP_STATE_DR_EXIT2     : SCR1_TAP_STATE_DR_PAUSE;</span></span>
+<span id="L152"><span class="lineNum">     152</span> <span class="tlaUNC">           0 :         SCR1_TAP_STATE_DR_EXIT2   : tap_fsm_next = tapc_tms ? SCR1_TAP_STATE_DR_UPDATE    : SCR1_TAP_STATE_DR_SHIFT;</span></span>
+<span id="L153"><span class="lineNum">     153</span> <span class="tlaUNC">           0 :         SCR1_TAP_STATE_DR_UPDATE  : tap_fsm_next = tapc_tms ? SCR1_TAP_STATE_DR_SEL_SCAN  : SCR1_TAP_STATE_IDLE;</span></span>
+<span id="L154"><span class="lineNum">     154</span> <span class="tlaUNC">           0 :         SCR1_TAP_STATE_IR_SEL_SCAN: tap_fsm_next = tapc_tms ? SCR1_TAP_STATE_RESET        : SCR1_TAP_STATE_IR_CAPTURE;</span></span>
+<span id="L155"><span class="lineNum">     155</span> <span class="tlaUNC">           0 :         SCR1_TAP_STATE_IR_CAPTURE : tap_fsm_next = tapc_tms ? SCR1_TAP_STATE_IR_EXIT1     : SCR1_TAP_STATE_IR_SHIFT;</span></span>
+<span id="L156"><span class="lineNum">     156</span> <span class="tlaUNC">           0 :         SCR1_TAP_STATE_IR_SHIFT   : tap_fsm_next = tapc_tms ? SCR1_TAP_STATE_IR_EXIT1     : SCR1_TAP_STATE_IR_SHIFT;</span></span>
+<span id="L157"><span class="lineNum">     157</span> <span class="tlaUNC">           0 :         SCR1_TAP_STATE_IR_EXIT1   : tap_fsm_next = tapc_tms ? SCR1_TAP_STATE_IR_UPDATE    : SCR1_TAP_STATE_IR_PAUSE;</span></span>
+<span id="L158"><span class="lineNum">     158</span> <span class="tlaUNC">           0 :         SCR1_TAP_STATE_IR_PAUSE   : tap_fsm_next = tapc_tms ? SCR1_TAP_STATE_IR_EXIT2     : SCR1_TAP_STATE_IR_PAUSE;</span></span>
+<span id="L159"><span class="lineNum">     159</span> <span class="tlaUNC">           0 :         SCR1_TAP_STATE_IR_EXIT2   : tap_fsm_next = tapc_tms ? SCR1_TAP_STATE_IR_UPDATE    : SCR1_TAP_STATE_IR_SHIFT;</span></span>
+<span id="L160"><span class="lineNum">     160</span> <span class="tlaUNC">           0 :         SCR1_TAP_STATE_IR_UPDATE  : tap_fsm_next = tapc_tms ? SCR1_TAP_STATE_DR_SEL_SCAN  : SCR1_TAP_STATE_IDLE;</span></span>
+<span id="L161"><span class="lineNum">     161</span>              : `ifdef SCR1_XPROP_EN</span>
+<span id="L162"><span class="lineNum">     162</span>              :         default                   : tap_fsm_next = SCR1_TAP_STATE_XXX;</span>
+<span id="L163"><span class="lineNum">     163</span>              : `else // SCR1_XPROP_EN</span>
+<span id="L164"><span class="lineNum">     164</span> <span class="tlaUNC">           0 :         default                   : tap_fsm_next = tap_fsm_ff;</span></span>
+<span id="L165"><span class="lineNum">     165</span>              : `endif // SCR1_XPROP_EN</span>
+<span id="L166"><span class="lineNum">     166</span>              :     endcase</span>
+<span id="L167"><span class="lineNum">     167</span>              : end</span>
+<span id="L168"><span class="lineNum">     168</span>              : </span>
+<span id="L169"><span class="lineNum">     169</span>              : assign tap_fsm_reset   = (tap_fsm_ff == SCR1_TAP_STATE_RESET);</span>
+<span id="L170"><span class="lineNum">     170</span>              : assign tap_fsm_ir_upd  = (tap_fsm_ff == SCR1_TAP_STATE_IR_UPDATE);</span>
+<span id="L171"><span class="lineNum">     171</span>              : assign tap_fsm_ir_cap  = (tap_fsm_ff == SCR1_TAP_STATE_IR_CAPTURE);</span>
+<span id="L172"><span class="lineNum">     172</span>              : assign tap_fsm_ir_shft = (tap_fsm_ff == SCR1_TAP_STATE_IR_SHIFT);</span>
+<span id="L173"><span class="lineNum">     173</span>              : </span>
+<span id="L174"><span class="lineNum">     174</span>              : //------------------------------------------------------------------------------</span>
+<span id="L175"><span class="lineNum">     175</span>              : // TAPC Instruction Registers</span>
+<span id="L176"><span class="lineNum">     176</span>              : //------------------------------------------------------------------------------</span>
+<span id="L177"><span class="lineNum">     177</span>              : </span>
+<span id="L178"><span class="lineNum">     178</span>              : // TAPC Instruction Shift register</span>
+<span id="L179"><span class="lineNum">     179</span>              : //------------------------------------------------------------------------------</span>
+<span id="L180"><span class="lineNum">     180</span>              : </span>
+<span id="L181"><span class="lineNum">     181</span> <span class="tlaUNC">           0 : always_ff @(posedge tapc_tck, negedge tapc_trst_n) begin</span></span>
+<span id="L182"><span class="lineNum">     182</span> <span class="tlaUNC">           0 :     if (~tapc_trst_n) begin</span></span>
+<span id="L183"><span class="lineNum">     183</span> <span class="tlaUNC">           0 :         tap_ir_shift_ff &lt;= '0;</span></span>
+<span id="L184"><span class="lineNum">     184</span> <span class="tlaUNC">           0 :     end else if (~trst_n_int) begin</span></span>
+<span id="L185"><span class="lineNum">     185</span> <span class="tlaUNC">           0 :         tap_ir_shift_ff &lt;= '0;</span></span>
+<span id="L186"><span class="lineNum">     186</span> <span class="tlaUNC">           0 :     end else begin</span></span>
+<span id="L187"><span class="lineNum">     187</span> <span class="tlaUNC">           0 :         tap_ir_shift_ff &lt;= tap_ir_shift_next;</span></span>
+<span id="L188"><span class="lineNum">     188</span>              :     end</span>
+<span id="L189"><span class="lineNum">     189</span>              : end</span>
+<span id="L190"><span class="lineNum">     190</span>              : </span>
+<span id="L191"><span class="lineNum">     191</span>              : assign tap_ir_shift_next = tap_fsm_ir_cap  ? {{($bits(tap_ir_shift_ff)-1){1'b0}}, 1'b1}</span>
+<span id="L192"><span class="lineNum">     192</span>              :                          : tap_fsm_ir_shft ? {tapc_tdi, tap_ir_shift_ff[$left(tap_ir_shift_ff):1]}</span>
+<span id="L193"><span class="lineNum">     193</span>              :                                            : tap_ir_shift_ff;</span>
+<span id="L194"><span class="lineNum">     194</span>              : </span>
+<span id="L195"><span class="lineNum">     195</span>              : // TAPC Instruction register</span>
+<span id="L196"><span class="lineNum">     196</span>              : //------------------------------------------------------------------------------</span>
+<span id="L197"><span class="lineNum">     197</span>              : </span>
+<span id="L198"><span class="lineNum">     198</span> <span class="tlaUNC">           0 : always_ff @(negedge tapc_tck, negedge tapc_trst_n) begin</span></span>
+<span id="L199"><span class="lineNum">     199</span> <span class="tlaUNC">           0 :     if (~tapc_trst_n) begin</span></span>
+<span id="L200"><span class="lineNum">     200</span> <span class="tlaUNC">           0 :         tap_ir_ff &lt;= SCR1_TAP_INSTR_IDCODE;</span></span>
+<span id="L201"><span class="lineNum">     201</span> <span class="tlaUNC">           0 :     end else if (~trst_n_int) begin</span></span>
+<span id="L202"><span class="lineNum">     202</span> <span class="tlaUNC">           0 :         tap_ir_ff &lt;= SCR1_TAP_INSTR_IDCODE;</span></span>
+<span id="L203"><span class="lineNum">     203</span> <span class="tlaUNC">           0 :     end else begin</span></span>
+<span id="L204"><span class="lineNum">     204</span> <span class="tlaUNC">           0 :         tap_ir_ff &lt;= tap_ir_next;</span></span>
+<span id="L205"><span class="lineNum">     205</span>              :     end</span>
+<span id="L206"><span class="lineNum">     206</span>              : end</span>
+<span id="L207"><span class="lineNum">     207</span>              : </span>
+<span id="L208"><span class="lineNum">     208</span>              : assign tap_ir_next = tap_fsm_ir_upd ? tap_ir_shift_ff : tap_ir_ff;</span>
+<span id="L209"><span class="lineNum">     209</span>              : </span>
+<span id="L210"><span class="lineNum">     210</span>              : //------------------------------------------------------------------------------</span>
+<span id="L211"><span class="lineNum">     211</span>              : // Control signals</span>
+<span id="L212"><span class="lineNum">     212</span>              : //------------------------------------------------------------------------------</span>
+<span id="L213"><span class="lineNum">     213</span>              : </span>
+<span id="L214"><span class="lineNum">     214</span> <span class="tlaUNC">           0 : always_ff @(posedge tapc_tck, negedge tapc_trst_n) begin</span></span>
+<span id="L215"><span class="lineNum">     215</span> <span class="tlaUNC">           0 :     if (~tapc_trst_n) begin</span></span>
+<span id="L216"><span class="lineNum">     216</span> <span class="tlaUNC">           0 :         tap_fsm_ir_shift_ff &lt;= 1'b0;</span></span>
+<span id="L217"><span class="lineNum">     217</span> <span class="tlaUNC">           0 :     end else if (~trst_n_int) begin</span></span>
+<span id="L218"><span class="lineNum">     218</span> <span class="tlaUNC">           0 :         tap_fsm_ir_shift_ff &lt;= 1'b0;</span></span>
+<span id="L219"><span class="lineNum">     219</span> <span class="tlaUNC">           0 :     end else begin</span></span>
+<span id="L220"><span class="lineNum">     220</span> <span class="tlaUNC">           0 :         tap_fsm_ir_shift_ff &lt;= tap_fsm_ir_shift_next;</span></span>
+<span id="L221"><span class="lineNum">     221</span>              :     end</span>
+<span id="L222"><span class="lineNum">     222</span>              : end</span>
+<span id="L223"><span class="lineNum">     223</span>              : </span>
+<span id="L224"><span class="lineNum">     224</span>              : assign tap_fsm_ir_shift_next = (tap_fsm_next == SCR1_TAP_STATE_IR_SHIFT);</span>
+<span id="L225"><span class="lineNum">     225</span>              : </span>
+<span id="L226"><span class="lineNum">     226</span> <span class="tlaUNC">           0 : always_ff @(posedge tapc_tck, negedge tapc_trst_n) begin</span></span>
+<span id="L227"><span class="lineNum">     227</span> <span class="tlaUNC">           0 :     if (~tapc_trst_n) begin</span></span>
+<span id="L228"><span class="lineNum">     228</span> <span class="tlaUNC">           0 :         tap_fsm_dr_capture_ff &lt;= 1'b0;</span></span>
+<span id="L229"><span class="lineNum">     229</span> <span class="tlaUNC">           0 :     end else if (~trst_n_int) begin</span></span>
+<span id="L230"><span class="lineNum">     230</span> <span class="tlaUNC">           0 :         tap_fsm_dr_capture_ff &lt;= 1'b0;</span></span>
+<span id="L231"><span class="lineNum">     231</span> <span class="tlaUNC">           0 :     end else begin</span></span>
+<span id="L232"><span class="lineNum">     232</span> <span class="tlaUNC">           0 :         tap_fsm_dr_capture_ff &lt;= tap_fsm_dr_capture_next;</span></span>
+<span id="L233"><span class="lineNum">     233</span>              :     end</span>
+<span id="L234"><span class="lineNum">     234</span>              : end</span>
+<span id="L235"><span class="lineNum">     235</span>              : </span>
+<span id="L236"><span class="lineNum">     236</span>              : assign tap_fsm_dr_capture_next = (tap_fsm_next == SCR1_TAP_STATE_DR_CAPTURE);</span>
+<span id="L237"><span class="lineNum">     237</span>              : </span>
+<span id="L238"><span class="lineNum">     238</span> <span class="tlaUNC">           0 : always_ff @(posedge tapc_tck, negedge tapc_trst_n) begin</span></span>
+<span id="L239"><span class="lineNum">     239</span> <span class="tlaUNC">           0 :     if (~tapc_trst_n) begin</span></span>
+<span id="L240"><span class="lineNum">     240</span> <span class="tlaUNC">           0 :         tap_fsm_dr_shift_ff &lt;= 1'b0;</span></span>
+<span id="L241"><span class="lineNum">     241</span> <span class="tlaUNC">           0 :     end else if (~trst_n_int) begin</span></span>
+<span id="L242"><span class="lineNum">     242</span> <span class="tlaUNC">           0 :         tap_fsm_dr_shift_ff &lt;= 1'b0;</span></span>
+<span id="L243"><span class="lineNum">     243</span> <span class="tlaUNC">           0 :     end else begin</span></span>
+<span id="L244"><span class="lineNum">     244</span> <span class="tlaUNC">           0 :         tap_fsm_dr_shift_ff &lt;= tap_fsm_dr_shift_next;</span></span>
+<span id="L245"><span class="lineNum">     245</span>              :     end</span>
+<span id="L246"><span class="lineNum">     246</span>              : end</span>
+<span id="L247"><span class="lineNum">     247</span>              : </span>
+<span id="L248"><span class="lineNum">     248</span>              : assign tap_fsm_dr_shift_next = (tap_fsm_next == SCR1_TAP_STATE_DR_SHIFT);</span>
+<span id="L249"><span class="lineNum">     249</span>              : </span>
+<span id="L250"><span class="lineNum">     250</span> <span class="tlaUNC">           0 : always_ff @(posedge tapc_tck, negedge tapc_trst_n) begin</span></span>
+<span id="L251"><span class="lineNum">     251</span> <span class="tlaUNC">           0 :     if (~tapc_trst_n) begin</span></span>
+<span id="L252"><span class="lineNum">     252</span> <span class="tlaUNC">           0 :         tap_fsm_dr_update_ff &lt;= 1'b0;</span></span>
+<span id="L253"><span class="lineNum">     253</span> <span class="tlaUNC">           0 :     end else if (~trst_n_int) begin</span></span>
+<span id="L254"><span class="lineNum">     254</span> <span class="tlaUNC">           0 :         tap_fsm_dr_update_ff &lt;= 1'b0;</span></span>
+<span id="L255"><span class="lineNum">     255</span> <span class="tlaUNC">           0 :     end else begin</span></span>
+<span id="L256"><span class="lineNum">     256</span> <span class="tlaUNC">           0 :         tap_fsm_dr_update_ff &lt;= tap_fsm_dr_update_next;</span></span>
+<span id="L257"><span class="lineNum">     257</span>              :     end</span>
+<span id="L258"><span class="lineNum">     258</span>              : end</span>
+<span id="L259"><span class="lineNum">     259</span>              : </span>
+<span id="L260"><span class="lineNum">     260</span>              : assign tap_fsm_dr_update_next = (tap_fsm_next == SCR1_TAP_STATE_DR_UPDATE);</span>
+<span id="L261"><span class="lineNum">     261</span>              : </span>
+<span id="L262"><span class="lineNum">     262</span>              : //------------------------------------------------------------------------------</span>
+<span id="L263"><span class="lineNum">     263</span>              : // TAPC DRs/DMI/SCU scan-chains</span>
+<span id="L264"><span class="lineNum">     264</span>              : //------------------------------------------------------------------------------</span>
+<span id="L265"><span class="lineNum">     265</span>              : //</span>
+<span id="L266"><span class="lineNum">     266</span>              :  // Consists of the following functional units:</span>
+<span id="L267"><span class="lineNum">     267</span>              :  // - Data source/destination decoder</span>
+<span id="L268"><span class="lineNum">     268</span>              :  // - DMI channel ID decoder</span>
+<span id="L269"><span class="lineNum">     269</span>              : </span>
+<span id="L270"><span class="lineNum">     270</span>              : // - Read data multiplexer</span>
+<span id="L271"><span class="lineNum">     271</span>              : // Data source/destination decoder</span>
+<span id="L272"><span class="lineNum">     272</span>              : //------------------------------------------------------------------------------</span>
+<span id="L273"><span class="lineNum">     273</span>              : </span>
+<span id="L274"><span class="lineNum">     274</span> <span class="tlaGNC tlaBgGNC">           2 : always_comb begin</span></span>
+<span id="L275"><span class="lineNum">     275</span> <span class="tlaGNC">           1 :     dr_bypass_sel               = 1'b0;</span></span>
+<span id="L276"><span class="lineNum">     276</span> <span class="tlaGNC">           1 :     dr_idcode_sel               = 1'b0;</span></span>
+<span id="L277"><span class="lineNum">     277</span> <span class="tlaGNC">           1 :     dr_bld_id_sel               = 1'b0;</span></span>
+<span id="L278"><span class="lineNum">     278</span> <span class="tlaGNC">           1 :     tapc2tapcsync_scu_ch_sel_o  = 1'b0;</span></span>
+<span id="L279"><span class="lineNum">     279</span> <span class="tlaGNC">           1 :     tapc2tapcsync_dmi_ch_sel_o  = 1'b0;</span></span>
+<span id="L280"><span class="lineNum">     280</span> <span class="tlaGNC">           1 :     case (tap_ir_ff)</span></span>
+<span id="L281"><span class="lineNum">     281</span> <span class="tlaUNC tlaBgUNC">           0 :         SCR1_TAP_INSTR_DTMCS     : tapc2tapcsync_dmi_ch_sel_o = 1'b1;</span></span>
+<span id="L282"><span class="lineNum">     282</span> <span class="tlaUNC">           0 :         SCR1_TAP_INSTR_DMI_ACCESS: tapc2tapcsync_dmi_ch_sel_o = 1'b1;</span></span>
+<span id="L283"><span class="lineNum">     283</span> <span class="tlaUNC">           0 :         SCR1_TAP_INSTR_IDCODE    : dr_idcode_sel              = 1'b1;</span></span>
+<span id="L284"><span class="lineNum">     284</span> <span class="tlaUNC">           0 :         SCR1_TAP_INSTR_BYPASS    : dr_bypass_sel              = 1'b1;</span></span>
+<span id="L285"><span class="lineNum">     285</span> <span class="tlaUNC">           0 :         SCR1_TAP_INSTR_BLD_ID    : dr_bld_id_sel              = 1'b1;</span></span>
+<span id="L286"><span class="lineNum">     286</span> <span class="tlaUNC">           0 :         SCR1_TAP_INSTR_SCU_ACCESS: tapc2tapcsync_scu_ch_sel_o = 1'b1;</span></span>
+<span id="L287"><span class="lineNum">     287</span> <span class="tlaGNC tlaBgGNC">           2 :         default                  : dr_bypass_sel              = 1'b1;</span></span>
+<span id="L288"><span class="lineNum">     288</span>              :     endcase</span>
+<span id="L289"><span class="lineNum">     289</span>              : end</span>
+<span id="L290"><span class="lineNum">     290</span>              : </span>
+<span id="L291"><span class="lineNum">     291</span>              : // DMI channel ID decoder</span>
+<span id="L292"><span class="lineNum">     292</span>              : //------------------------------------------------------------------------------</span>
+<span id="L293"><span class="lineNum">     293</span>              : </span>
+<span id="L294"><span class="lineNum">     294</span> <span class="tlaGNC">           2 : always_comb begin</span></span>
+<span id="L295"><span class="lineNum">     295</span> <span class="tlaGNC">           1 :     tapc2tapcsync_ch_id_o = '0;</span></span>
+<span id="L296"><span class="lineNum">     296</span> <span class="tlaGNC">           1 :     case (tap_ir_ff)</span></span>
+<span id="L297"><span class="lineNum">     297</span> <span class="tlaUNC tlaBgUNC">           0 :         SCR1_TAP_INSTR_DTMCS     : tapc2tapcsync_ch_id_o = 'd1;</span></span>
+<span id="L298"><span class="lineNum">     298</span> <span class="tlaUNC">           0 :         SCR1_TAP_INSTR_DMI_ACCESS: tapc2tapcsync_ch_id_o = 'd2;</span></span>
+<span id="L299"><span class="lineNum">     299</span> <span class="tlaGNC tlaBgGNC">           2 :         default                  : tapc2tapcsync_ch_id_o = '0;</span></span>
+<span id="L300"><span class="lineNum">     300</span>              :     endcase</span>
+<span id="L301"><span class="lineNum">     301</span>              : end</span>
+<span id="L302"><span class="lineNum">     302</span>              : </span>
+<span id="L303"><span class="lineNum">     303</span>              : // Read data multiplexer</span>
+<span id="L304"><span class="lineNum">     304</span>              : //------------------------------------------------------------------------------</span>
+<span id="L305"><span class="lineNum">     305</span>              : </span>
+<span id="L306"><span class="lineNum">     306</span> <span class="tlaGNC">           2 : always_comb begin</span></span>
+<span id="L307"><span class="lineNum">     307</span> <span class="tlaGNC">           1 :     dr_out = 1'b0;</span></span>
+<span id="L308"><span class="lineNum">     308</span> <span class="tlaGNC">           1 :     case (tap_ir_ff)</span></span>
+<span id="L309"><span class="lineNum">     309</span> <span class="tlaUNC tlaBgUNC">           0 :         SCR1_TAP_INSTR_DTMCS     : dr_out = tapcsync2tapc_ch_tdo_i;</span></span>
+<span id="L310"><span class="lineNum">     310</span> <span class="tlaUNC">           0 :         SCR1_TAP_INSTR_DMI_ACCESS: dr_out = tapcsync2tapc_ch_tdo_i;</span></span>
+<span id="L311"><span class="lineNum">     311</span> <span class="tlaUNC">           0 :         SCR1_TAP_INSTR_IDCODE    : dr_out = dr_idcode_tdo;</span></span>
+<span id="L312"><span class="lineNum">     312</span> <span class="tlaUNC">           0 :         SCR1_TAP_INSTR_BYPASS    : dr_out = dr_bypass_tdo;</span></span>
+<span id="L313"><span class="lineNum">     313</span> <span class="tlaUNC">           0 :         SCR1_TAP_INSTR_BLD_ID    : dr_out = dr_bld_id_tdo;</span></span>
+<span id="L314"><span class="lineNum">     314</span> <span class="tlaUNC">           0 :         SCR1_TAP_INSTR_SCU_ACCESS: dr_out = tapcsync2tapc_ch_tdo_i;</span></span>
+<span id="L315"><span class="lineNum">     315</span> <span class="tlaGNC tlaBgGNC">           2 :         default                  : dr_out = dr_bypass_tdo;</span></span>
+<span id="L316"><span class="lineNum">     316</span>              :     endcase</span>
+<span id="L317"><span class="lineNum">     317</span>              : end</span>
+<span id="L318"><span class="lineNum">     318</span>              : </span>
+<span id="L319"><span class="lineNum">     319</span>              : //------------------------------------------------------------------------------</span>
+<span id="L320"><span class="lineNum">     320</span>              : // TDO enable and output registers</span>
+<span id="L321"><span class="lineNum">     321</span>              : //------------------------------------------------------------------------------</span>
+<span id="L322"><span class="lineNum">     322</span>              : </span>
+<span id="L323"><span class="lineNum">     323</span>              : // TDO enable register</span>
+<span id="L324"><span class="lineNum">     324</span>              : //------------------------------------------------------------------------------</span>
+<span id="L325"><span class="lineNum">     325</span>              : </span>
+<span id="L326"><span class="lineNum">     326</span> <span class="tlaUNC tlaBgUNC">           0 : always_ff @(negedge tapc_tck, negedge tapc_trst_n) begin</span></span>
+<span id="L327"><span class="lineNum">     327</span> <span class="tlaUNC">           0 :     if (~tapc_trst_n) begin</span></span>
+<span id="L328"><span class="lineNum">     328</span> <span class="tlaUNC">           0 :         tdo_en_ff  &lt;= 1'b0;</span></span>
+<span id="L329"><span class="lineNum">     329</span> <span class="tlaUNC">           0 :     end else if (~trst_n_int) begin</span></span>
+<span id="L330"><span class="lineNum">     330</span> <span class="tlaUNC">           0 :         tdo_en_ff  &lt;= 1'b0;</span></span>
+<span id="L331"><span class="lineNum">     331</span> <span class="tlaUNC">           0 :     end else begin</span></span>
+<span id="L332"><span class="lineNum">     332</span> <span class="tlaUNC">           0 :         tdo_en_ff  &lt;= tdo_en_next;</span></span>
+<span id="L333"><span class="lineNum">     333</span>              :     end</span>
+<span id="L334"><span class="lineNum">     334</span>              : end</span>
+<span id="L335"><span class="lineNum">     335</span>              : </span>
+<span id="L336"><span class="lineNum">     336</span>              : assign tdo_en_next = tap_fsm_dr_shift_ff | tap_fsm_ir_shift_ff;</span>
+<span id="L337"><span class="lineNum">     337</span>              : </span>
+<span id="L338"><span class="lineNum">     338</span>              : // TDO output register</span>
+<span id="L339"><span class="lineNum">     339</span>              : //------------------------------------------------------------------------------</span>
+<span id="L340"><span class="lineNum">     340</span>              : </span>
+<span id="L341"><span class="lineNum">     341</span> <span class="tlaUNC">           0 : always_ff @(negedge tapc_tck, negedge tapc_trst_n) begin</span></span>
+<span id="L342"><span class="lineNum">     342</span> <span class="tlaUNC">           0 :     if (~tapc_trst_n) begin</span></span>
+<span id="L343"><span class="lineNum">     343</span> <span class="tlaUNC">           0 :         tdo_out_ff &lt;= 1'b0;</span></span>
+<span id="L344"><span class="lineNum">     344</span> <span class="tlaUNC">           0 :     end else if (~trst_n_int) begin</span></span>
+<span id="L345"><span class="lineNum">     345</span> <span class="tlaUNC">           0 :         tdo_out_ff &lt;= 1'b0;</span></span>
+<span id="L346"><span class="lineNum">     346</span> <span class="tlaUNC">           0 :     end else begin</span></span>
+<span id="L347"><span class="lineNum">     347</span> <span class="tlaUNC">           0 :         tdo_out_ff &lt;= tdo_out_next;</span></span>
+<span id="L348"><span class="lineNum">     348</span>              :     end</span>
+<span id="L349"><span class="lineNum">     349</span>              : end</span>
+<span id="L350"><span class="lineNum">     350</span>              : </span>
+<span id="L351"><span class="lineNum">     351</span>              : assign tdo_out_next = tap_fsm_dr_shift_ff ? dr_out</span>
+<span id="L352"><span class="lineNum">     352</span>              :                     : tap_fsm_ir_shift_ff ? tap_ir_shift_ff[0]</span>
+<span id="L353"><span class="lineNum">     353</span>              :                                           : 1'b0;</span>
+<span id="L354"><span class="lineNum">     354</span>              : </span>
+<span id="L355"><span class="lineNum">     355</span>              : // TAPC TDO signals</span>
+<span id="L356"><span class="lineNum">     356</span>              : assign tapc_tdo_en = tdo_en_ff;</span>
+<span id="L357"><span class="lineNum">     357</span>              : assign tapc_tdo    = tdo_out_ff;</span>
+<span id="L358"><span class="lineNum">     358</span>              : </span>
+<span id="L359"><span class="lineNum">     359</span>              : //------------------------------------------------------------------------------</span>
+<span id="L360"><span class="lineNum">     360</span>              : // TAPC Data Registers</span>
+<span id="L361"><span class="lineNum">     361</span>              : //------------------------------------------------------------------------------</span>
+<span id="L362"><span class="lineNum">     362</span>              : //</span>
+<span id="L363"><span class="lineNum">     363</span>              :  // Registers:</span>
+<span id="L364"><span class="lineNum">     364</span>              :  // - BYPASS register</span>
+<span id="L365"><span class="lineNum">     365</span>              :  // - IDCODE register</span>
+<span id="L366"><span class="lineNum">     366</span>              :  // - BUILD ID register</span>
+<span id="L367"><span class="lineNum">     367</span>              : </span>
+<span id="L368"><span class="lineNum">     368</span>              : // BYPASS register</span>
+<span id="L369"><span class="lineNum">     369</span>              : //------------------------------------------------------------------------------</span>
+<span id="L370"><span class="lineNum">     370</span>              : // 1-bit mandatory IEEE 1149.1 compliant register</span>
+<span id="L371"><span class="lineNum">     371</span>              : </span>
+<span id="L372"><span class="lineNum">     372</span>              : scr1_tapc_shift_reg  #(</span>
+<span id="L373"><span class="lineNum">     373</span>              :     .SCR1_WIDTH       (SCR1_TAP_DR_BYPASS_WIDTH),</span>
+<span id="L374"><span class="lineNum">     374</span>              :     .SCR1_RESET_VALUE (SCR1_TAP_DR_BYPASS_WIDTH'(0))</span>
+<span id="L375"><span class="lineNum">     375</span>              : ) i_bypass_reg        (</span>
+<span id="L376"><span class="lineNum">     376</span>              :     .clk              (tapc_tck             ),</span>
+<span id="L377"><span class="lineNum">     377</span>              :     .rst_n            (tapc_trst_n          ),</span>
+<span id="L378"><span class="lineNum">     378</span>              :     .rst_n_sync       (trst_n_int           ),</span>
+<span id="L379"><span class="lineNum">     379</span>              :     .fsm_dr_select    (dr_bypass_sel        ),</span>
+<span id="L380"><span class="lineNum">     380</span>              :     .fsm_dr_capture   (tap_fsm_dr_capture_ff),</span>
+<span id="L381"><span class="lineNum">     381</span>              :     .fsm_dr_shift     (tap_fsm_dr_shift_ff  ),</span>
+<span id="L382"><span class="lineNum">     382</span>              :     .din_serial       (tapc_tdi             ),</span>
+<span id="L383"><span class="lineNum">     383</span>              :     .din_parallel     (1'b0                 ),</span>
+<span id="L384"><span class="lineNum">     384</span>              :     .dout_serial      (dr_bypass_tdo        ),</span>
+<span id="L385"><span class="lineNum">     385</span>              :     .dout_parallel    (                     )</span>
+<span id="L386"><span class="lineNum">     386</span>              : );</span>
+<span id="L387"><span class="lineNum">     387</span>              : </span>
+<span id="L388"><span class="lineNum">     388</span>              : // IDCODE register</span>
+<span id="L389"><span class="lineNum">     389</span>              : //------------------------------------------------------------------------------</span>
+<span id="L390"><span class="lineNum">     390</span>              : // Holds the Device ID value (mandatory IEEE 1149.1 compliant register)</span>
+<span id="L391"><span class="lineNum">     391</span>              : </span>
+<span id="L392"><span class="lineNum">     392</span>              : scr1_tapc_shift_reg  #(</span>
+<span id="L393"><span class="lineNum">     393</span>              :     .SCR1_WIDTH       (SCR1_TAP_DR_IDCODE_WIDTH),</span>
+<span id="L394"><span class="lineNum">     394</span>              :     .SCR1_RESET_VALUE (SCR1_TAP_DR_IDCODE_WIDTH'(0))</span>
+<span id="L395"><span class="lineNum">     395</span>              : ) i_tap_idcode_reg    (</span>
+<span id="L396"><span class="lineNum">     396</span>              :     .clk              (tapc_tck              ),</span>
+<span id="L397"><span class="lineNum">     397</span>              :     .rst_n            (tapc_trst_n           ),</span>
+<span id="L398"><span class="lineNum">     398</span>              :     .rst_n_sync       (trst_n_int            ),</span>
+<span id="L399"><span class="lineNum">     399</span>              :     .fsm_dr_select    (dr_idcode_sel         ),</span>
+<span id="L400"><span class="lineNum">     400</span>              :     .fsm_dr_capture   (tap_fsm_dr_capture_ff ),</span>
+<span id="L401"><span class="lineNum">     401</span>              :     .fsm_dr_shift     (tap_fsm_dr_shift_ff   ),</span>
+<span id="L402"><span class="lineNum">     402</span>              :     .din_serial       (tapc_tdi              ),</span>
+<span id="L403"><span class="lineNum">     403</span>              :     .din_parallel     (soc2tapc_fuse_idcode_i),</span>
+<span id="L404"><span class="lineNum">     404</span>              :     .dout_serial      (dr_idcode_tdo         ),</span>
+<span id="L405"><span class="lineNum">     405</span>              :     .dout_parallel    (                      )</span>
+<span id="L406"><span class="lineNum">     406</span>              : );</span>
+<span id="L407"><span class="lineNum">     407</span>              : </span>
+<span id="L408"><span class="lineNum">     408</span>              : // BUILD ID register</span>
+<span id="L409"><span class="lineNum">     409</span>              : //------------------------------------------------------------------------------</span>
+<span id="L410"><span class="lineNum">     410</span>              : // Holds the BUILD ID value</span>
+<span id="L411"><span class="lineNum">     411</span>              : </span>
+<span id="L412"><span class="lineNum">     412</span>              : scr1_tapc_shift_reg  #(</span>
+<span id="L413"><span class="lineNum">     413</span>              :     .SCR1_WIDTH       (SCR1_TAP_DR_BLD_ID_WIDTH),</span>
+<span id="L414"><span class="lineNum">     414</span>              :     .SCR1_RESET_VALUE (SCR1_TAP_DR_BLD_ID_WIDTH'(0))</span>
+<span id="L415"><span class="lineNum">     415</span>              : ) i_tap_dr_bld_id_reg (</span>
+<span id="L416"><span class="lineNum">     416</span>              :     .clk              (tapc_tck             ),</span>
+<span id="L417"><span class="lineNum">     417</span>              :     .rst_n            (tapc_trst_n          ),</span>
+<span id="L418"><span class="lineNum">     418</span>              :     .rst_n_sync       (trst_n_int           ),</span>
+<span id="L419"><span class="lineNum">     419</span>              :     .fsm_dr_select    (dr_bld_id_sel        ),</span>
+<span id="L420"><span class="lineNum">     420</span>              :     .fsm_dr_capture   (tap_fsm_dr_capture_ff),</span>
+<span id="L421"><span class="lineNum">     421</span>              :     .fsm_dr_shift     (tap_fsm_dr_shift_ff  ),</span>
+<span id="L422"><span class="lineNum">     422</span>              :     .din_serial       (tapc_tdi             ),</span>
+<span id="L423"><span class="lineNum">     423</span>              :     .din_parallel     (SCR1_TAP_BLD_ID_VALUE),</span>
+<span id="L424"><span class="lineNum">     424</span>              :     .dout_serial      (dr_bld_id_tdo        ),</span>
+<span id="L425"><span class="lineNum">     425</span>              :     .dout_parallel    (                     )</span>
+<span id="L426"><span class="lineNum">     426</span>              : );</span>
+<span id="L427"><span class="lineNum">     427</span>              : </span>
+<span id="L428"><span class="lineNum">     428</span>              : //------------------------------------------------------------------------------</span>
+<span id="L429"><span class="lineNum">     429</span>              : // DMI/SCU scan-chains signals</span>
+<span id="L430"><span class="lineNum">     430</span>              : //------------------------------------------------------------------------------</span>
+<span id="L431"><span class="lineNum">     431</span>              : </span>
+<span id="L432"><span class="lineNum">     432</span>              : assign tapc2tapcsync_ch_tdi_o     = tapc_tdi;</span>
+<span id="L433"><span class="lineNum">     433</span>              : assign tapc2tapcsync_ch_capture_o = tap_fsm_dr_capture_ff;</span>
+<span id="L434"><span class="lineNum">     434</span>              : assign tapc2tapcsync_ch_shift_o   = tap_fsm_dr_shift_ff;</span>
+<span id="L435"><span class="lineNum">     435</span>              : assign tapc2tapcsync_ch_update_o  = tap_fsm_dr_update_ff;</span>
+<span id="L436"><span class="lineNum">     436</span>              : </span>
+<span id="L437"><span class="lineNum">     437</span>              : `ifdef SCR1_TRGT_SIMULATION</span>
+<span id="L438"><span class="lineNum">     438</span>              : //-------------------------------------------------------------------------------</span>
+<span id="L439"><span class="lineNum">     439</span>              : // Assertion</span>
+<span id="L440"><span class="lineNum">     440</span>              : //-------------------------------------------------------------------------------</span>
+<span id="L441"><span class="lineNum">     441</span>              : </span>
+<span id="L442"><span class="lineNum">     442</span>              : // X checks</span>
+<span id="L443"><span class="lineNum">     443</span>              : SCR1_SVA_TAPC_XCHECK : assert property (</span>
+<span id="L444"><span class="lineNum">     444</span>              :     @(posedge tapc_tck) disable iff (~tapc_trst_n)</span>
+<span id="L445"><span class="lineNum">     445</span>              :     !$isunknown({tapc_tms, tapc_tdi})</span>
+<span id="L446"><span class="lineNum">     446</span>              : ) else $error(&quot;TAPC error: unknown values&quot;);</span>
+<span id="L447"><span class="lineNum">     447</span>              : </span>
+<span id="L448"><span class="lineNum">     448</span>              : SCR1_SVA_TAPC_XCHECK_NEGCLK : assert property (</span>
+<span id="L449"><span class="lineNum">     449</span>              :     @(negedge tapc_tck) disable iff (tap_fsm_ff != SCR1_TAP_STATE_DR_SHIFT)</span>
+<span id="L450"><span class="lineNum">     450</span>              :     !$isunknown({tapcsync2tapc_ch_tdo_i})</span>
+<span id="L451"><span class="lineNum">     451</span>              : ) else $error(&quot;TAPC @negedge error: unknown values&quot;);</span>
+<span id="L452"><span class="lineNum">     452</span>              : </span>
+<span id="L453"><span class="lineNum">     453</span>              : `endif // SCR1_TRGT_SIMULATION</span>
+<span id="L454"><span class="lineNum">     454</span>              : </span>
+<span id="L455"><span class="lineNum">     455</span>              : endmodule : scr1_tapc</span>
+<span id="L456"><span class="lineNum">     456</span>              : </span>
+<span id="L457"><span class="lineNum">     457</span>              : `endif // SCR1_DBG_EN</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

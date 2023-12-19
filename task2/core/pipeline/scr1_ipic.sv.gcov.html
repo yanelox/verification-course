@@ -1,0 +1,681 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - core/pipeline/scr1_ipic.sv</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../index.html">top level</a> - <a href="index.html">core/pipeline</a> - scr1_ipic.sv<span style="font-size: 80%;"> (source / <a href="scr1_ipic.sv.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">72.0&nbsp;%</td>
+            <td class="headerCovTableEntry">164</td>
+            <td class="headerCovTableEntry">118</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2023-12-19 23:18:55</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryHi">-</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+                  <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /// Copyright by Syntacore LLC © 2016-2021. See LICENSE for details</span>
+<span id="L2"><span class="lineNum">       2</span>              : /// @file       &lt;scr1_ipic.sv&gt;</span>
+<span id="L3"><span class="lineNum">       3</span>              : /// @brief      Integrated Programmable Interrupt Controller (IPIC)</span>
+<span id="L4"><span class="lineNum">       4</span>              : ///</span>
+<span id="L5"><span class="lineNum">       5</span>              : </span>
+<span id="L6"><span class="lineNum">       6</span>              : //------------------------------------------------------------------------------</span>
+<span id="L7"><span class="lineNum">       7</span>              :  //</span>
+<span id="L8"><span class="lineNum">       8</span>              :  // Functionality:</span>
+<span id="L9"><span class="lineNum">       9</span>              :  // - Synchronizes IRQ lines (optional)</span>
+<span id="L10"><span class="lineNum">      10</span>              :  // - Detects level and edge (with optional lines inversion) of IRQ lines</span>
+<span id="L11"><span class="lineNum">      11</span>              :  // - Setups interrupts handling (mode, inversion, enable)</span>
+<span id="L12"><span class="lineNum">      12</span>              :  // - Provides information about pending interrupts and interrupts currently in</span>
+<span id="L13"><span class="lineNum">      13</span>              :  //   service</span>
+<span id="L14"><span class="lineNum">      14</span>              :  // - Generates interrupt request to CSR</span>
+<span id="L15"><span class="lineNum">      15</span>              :  //</span>
+<span id="L16"><span class="lineNum">      16</span>              :  // Structure:</span>
+<span id="L17"><span class="lineNum">      17</span>              :  // - IRQ lines handling (synchronization, level and edge detection) logic</span>
+<span id="L18"><span class="lineNum">      18</span>              :  // - IPIC registers:</span>
+<span id="L19"><span class="lineNum">      19</span>              :  //   - CISV</span>
+<span id="L20"><span class="lineNum">      20</span>              :  //   - CICSR</span>
+<span id="L21"><span class="lineNum">      21</span>              :  //   - EOI</span>
+<span id="L22"><span class="lineNum">      22</span>              :  //   - SOI</span>
+<span id="L23"><span class="lineNum">      23</span>              :  //   - IDX</span>
+<span id="L24"><span class="lineNum">      24</span>              :  //   - IPR</span>
+<span id="L25"><span class="lineNum">      25</span>              :  //   - ISVR</span>
+<span id="L26"><span class="lineNum">      26</span>              :  //   - IER</span>
+<span id="L27"><span class="lineNum">      27</span>              :  //   - IMR</span>
+<span id="L28"><span class="lineNum">      28</span>              :  //   - IINVR</span>
+<span id="L29"><span class="lineNum">      29</span>              :  //   - ICSR</span>
+<span id="L30"><span class="lineNum">      30</span>              :  // - Priority interrupt generation logic</span>
+<span id="L31"><span class="lineNum">      31</span>              :  //</span>
+<span id="L32"><span class="lineNum">      32</span>              : //------------------------------------------------------------------------------</span>
+<span id="L33"><span class="lineNum">      33</span>              : </span>
+<span id="L34"><span class="lineNum">      34</span>              : `include &quot;scr1_arch_description.svh&quot;</span>
+<span id="L35"><span class="lineNum">      35</span>              : </span>
+<span id="L36"><span class="lineNum">      36</span>              : `ifdef SCR1_IPIC_EN</span>
+<span id="L37"><span class="lineNum">      37</span>              : </span>
+<span id="L38"><span class="lineNum">      38</span>              : `include &quot;scr1_ipic.svh&quot;</span>
+<span id="L39"><span class="lineNum">      39</span>              : </span>
+<span id="L40"><span class="lineNum">      40</span>              : module scr1_ipic</span>
+<span id="L41"><span class="lineNum">      41</span>              : (</span>
+<span id="L42"><span class="lineNum">      42</span>              :     // Common</span>
+<span id="L43"><span class="lineNum">      43</span>              :     input   logic                                   rst_n,                  // IPIC reset</span>
+<span id="L44"><span class="lineNum">      44</span>              :     input   logic                                   clk,                    // IPIC clock</span>
+<span id="L45"><span class="lineNum">      45</span>              : </span>
+<span id="L46"><span class="lineNum">      46</span>              :     // External Interrupt lines</span>
+<span id="L47"><span class="lineNum">      47</span>              :     input   logic [SCR1_IRQ_LINES_NUM-1:0]          soc2ipic_irq_lines_i,   // External IRQ lines</span>
+<span id="L48"><span class="lineNum">      48</span>              : </span>
+<span id="L49"><span class="lineNum">      49</span>              :     // CSR &lt;-&gt; IPIC interface</span>
+<span id="L50"><span class="lineNum">      50</span>              :     input   logic                                   csr2ipic_r_req_i,       // IPIC read request</span>
+<span id="L51"><span class="lineNum">      51</span>              :     input   logic                                   csr2ipic_w_req_i,       // IPIC write request</span>
+<span id="L52"><span class="lineNum">      52</span>              :     input   logic [2:0]                             csr2ipic_addr_i,        // IPIC address</span>
+<span id="L53"><span class="lineNum">      53</span>              :     input   logic [`SCR1_XLEN-1:0]                  csr2ipic_wdata_i,       // IPIC write data</span>
+<span id="L54"><span class="lineNum">      54</span>              :     output  logic [`SCR1_XLEN-1:0]                  ipic2csr_rdata_o,       // IPIC read data</span>
+<span id="L55"><span class="lineNum">      55</span>              :     output  logic                                   ipic2csr_irq_m_req_o    // IRQ request from IPIC</span>
+<span id="L56"><span class="lineNum">      56</span>              : );</span>
+<span id="L57"><span class="lineNum">      57</span>              : </span>
+<span id="L58"><span class="lineNum">      58</span>              : //-------------------------------------------------------------------------------</span>
+<span id="L59"><span class="lineNum">      59</span>              : // Local types declaration</span>
+<span id="L60"><span class="lineNum">      60</span>              : //-------------------------------------------------------------------------------</span>
+<span id="L61"><span class="lineNum">      61</span>              : typedef struct {</span>
+<span id="L62"><span class="lineNum">      62</span>              :     logic                                   vd;</span>
+<span id="L63"><span class="lineNum">      63</span>              :     logic                                   idx;</span>
+<span id="L64"><span class="lineNum">      64</span>              : } type_scr1_search_one_2_s;</span>
+<span id="L65"><span class="lineNum">      65</span>              : </span>
+<span id="L66"><span class="lineNum">      66</span>              : typedef struct {</span>
+<span id="L67"><span class="lineNum">      67</span>              :     logic                                   vd;</span>
+<span id="L68"><span class="lineNum">      68</span>              :     logic   [SCR1_IRQ_IDX_WIDTH-1:0]        idx;</span>
+<span id="L69"><span class="lineNum">      69</span>              : } type_scr1_search_one_16_s;</span>
+<span id="L70"><span class="lineNum">      70</span>              : </span>
+<span id="L71"><span class="lineNum">      71</span>              : typedef struct packed {</span>
+<span id="L72"><span class="lineNum">      72</span>              :     logic                                   ip;</span>
+<span id="L73"><span class="lineNum">      73</span>              :     logic                                   ie;</span>
+<span id="L74"><span class="lineNum">      74</span>              :     logic                                   im;</span>
+<span id="L75"><span class="lineNum">      75</span>              :     logic                                   inv;</span>
+<span id="L76"><span class="lineNum">      76</span>              :     logic                                   isv;</span>
+<span id="L77"><span class="lineNum">      77</span>              :     logic   [SCR1_IRQ_LINES_WIDTH-1:0]      line;</span>
+<span id="L78"><span class="lineNum">      78</span>              : } type_scr1_icsr_m_s;</span>
+<span id="L79"><span class="lineNum">      79</span>              : </span>
+<span id="L80"><span class="lineNum">      80</span>              : typedef struct packed {</span>
+<span id="L81"><span class="lineNum">      81</span>              :     logic                                   ip;</span>
+<span id="L82"><span class="lineNum">      82</span>              :     logic                                   ie;</span>
+<span id="L83"><span class="lineNum">      83</span>              : } type_scr1_cicsr_s;</span>
+<span id="L84"><span class="lineNum">      84</span>              : </span>
+<span id="L85"><span class="lineNum">      85</span>              : //-------------------------------------------------------------------------------</span>
+<span id="L86"><span class="lineNum">      86</span>              : // Local functions declaration</span>
+<span id="L87"><span class="lineNum">      87</span>              : //-------------------------------------------------------------------------------</span>
+<span id="L88"><span class="lineNum">      88</span>              : </span>
+<span id="L89"><span class="lineNum">      89</span> <span class="tlaGNC tlaBgGNC">          56 : function automatic type_scr1_search_one_2_s scr1_search_one_2(</span></span>
+<span id="L90"><span class="lineNum">      90</span>              :     input   logic   [1:0] din</span>
+<span id="L91"><span class="lineNum">      91</span>              : );</span>
+<span id="L92"><span class="lineNum">      92</span>              :     type_scr1_search_one_2_s tmp;</span>
+<span id="L93"><span class="lineNum">      93</span> <span class="tlaGNC">          28 : begin</span></span>
+<span id="L94"><span class="lineNum">      94</span> <span class="tlaGNC">          28 :     tmp.vd  = |din;</span></span>
+<span id="L95"><span class="lineNum">      95</span> <span class="tlaGNC">          28 :     tmp.idx = ~din[0];</span></span>
+<span id="L96"><span class="lineNum">      96</span> <span class="tlaGNC">          28 :     return  tmp;</span></span>
+<span id="L97"><span class="lineNum">      97</span>              : end</span>
+<span id="L98"><span class="lineNum">      98</span>              : endfunction : scr1_search_one_2</span>
+<span id="L99"><span class="lineNum">      99</span>              : </span>
+<span id="L100"><span class="lineNum">     100</span> <span class="tlaGNC">           4 : function automatic type_scr1_search_one_16_s scr1_search_one_16(</span></span>
+<span id="L101"><span class="lineNum">     101</span>              :     input   logic [15:0]    din</span>
+<span id="L102"><span class="lineNum">     102</span>              : );</span>
+<span id="L103"><span class="lineNum">     103</span> <span class="tlaGNC">           2 : begin</span></span>
+<span id="L104"><span class="lineNum">     104</span>              :     logic [7:0]         stage1_vd;</span>
+<span id="L105"><span class="lineNum">     105</span>              :     logic [3:0]         stage2_vd;</span>
+<span id="L106"><span class="lineNum">     106</span>              :     logic [1:0]         stage3_vd;</span>
+<span id="L107"><span class="lineNum">     107</span>              : </span>
+<span id="L108"><span class="lineNum">     108</span>              :     logic               stage1_idx [7:0];</span>
+<span id="L109"><span class="lineNum">     109</span>              :     logic [1:0]         stage2_idx [3:0];</span>
+<span id="L110"><span class="lineNum">     110</span>              :     logic [2:0]         stage3_idx [1:0];</span>
+<span id="L111"><span class="lineNum">     111</span>              :     type_scr1_search_one_16_s result;</span>
+<span id="L112"><span class="lineNum">     112</span>              : </span>
+<span id="L113"><span class="lineNum">     113</span>              :     // Stage 1</span>
+<span id="L114"><span class="lineNum">     114</span> <span class="tlaGNC">           2 :     for (int unsigned i=0; i&lt;8; ++i) begin</span></span>
+<span id="L115"><span class="lineNum">     115</span>              :         type_scr1_search_one_2_s tmp;</span>
+<span id="L116"><span class="lineNum">     116</span> <span class="tlaGNC">          16 :         tmp = scr1_search_one_2(din[(i+1)*2-1-:2]);</span></span>
+<span id="L117"><span class="lineNum">     117</span> <span class="tlaGNC">          16 :         stage1_vd[i]  = tmp.vd;</span></span>
+<span id="L118"><span class="lineNum">     118</span> <span class="tlaGNC">          16 :         stage1_idx[i] = tmp.idx;</span></span>
+<span id="L119"><span class="lineNum">     119</span>              :     end</span>
+<span id="L120"><span class="lineNum">     120</span>              : </span>
+<span id="L121"><span class="lineNum">     121</span>              :     // Stage 2</span>
+<span id="L122"><span class="lineNum">     122</span> <span class="tlaGNC">           2 :     for (int unsigned i=0; i&lt;4; ++i) begin</span></span>
+<span id="L123"><span class="lineNum">     123</span>              :         type_scr1_search_one_2_s tmp;</span>
+<span id="L124"><span class="lineNum">     124</span> <span class="tlaGNC">           8 :         tmp = scr1_search_one_2(stage1_vd[(i+1)*2-1-:2]);</span></span>
+<span id="L125"><span class="lineNum">     125</span> <span class="tlaGNC">           8 :         stage2_vd[i]  = tmp.vd;</span></span>
+<span id="L126"><span class="lineNum">     126</span> <span class="tlaGNC">           8 :         stage2_idx[i] = (~tmp.idx) ? {tmp.idx, stage1_idx[2*i]} : {tmp.idx, stage1_idx[2*i+1]};</span></span>
+<span id="L127"><span class="lineNum">     127</span>              :     end</span>
+<span id="L128"><span class="lineNum">     128</span>              : </span>
+<span id="L129"><span class="lineNum">     129</span>              :     // Stage 3</span>
+<span id="L130"><span class="lineNum">     130</span> <span class="tlaGNC">           2 :     for (int unsigned i=0; i&lt;2; ++i) begin</span></span>
+<span id="L131"><span class="lineNum">     131</span>              :         type_scr1_search_one_2_s tmp;</span>
+<span id="L132"><span class="lineNum">     132</span> <span class="tlaGNC">           4 :         tmp = scr1_search_one_2(stage2_vd[(i+1)*2-1-:2]);</span></span>
+<span id="L133"><span class="lineNum">     133</span> <span class="tlaGNC">           4 :         stage3_vd[i]  = tmp.vd;</span></span>
+<span id="L134"><span class="lineNum">     134</span> <span class="tlaGNC">           4 :         stage3_idx[i] = (~tmp.idx) ? {tmp.idx, stage2_idx[2*i]} : {tmp.idx, stage2_idx[2*i+1]};</span></span>
+<span id="L135"><span class="lineNum">     135</span>              :     end</span>
+<span id="L136"><span class="lineNum">     136</span>              : </span>
+<span id="L137"><span class="lineNum">     137</span>              :     // Stage 4</span>
+<span id="L138"><span class="lineNum">     138</span> <span class="tlaGNC">           2 :     result.vd = |stage3_vd;</span></span>
+<span id="L139"><span class="lineNum">     139</span> <span class="tlaGNC">           2 :     result.idx = (stage3_vd[0]) ? {1'b0, stage3_idx[0]} : {1'b1, stage3_idx[1]};</span></span>
+<span id="L140"><span class="lineNum">     140</span>              : </span>
+<span id="L141"><span class="lineNum">     141</span> <span class="tlaGNC">           2 :     return result;</span></span>
+<span id="L142"><span class="lineNum">     142</span>              : end</span>
+<span id="L143"><span class="lineNum">     143</span>              : endfunction : scr1_search_one_16</span>
+<span id="L144"><span class="lineNum">     144</span>              : </span>
+<span id="L145"><span class="lineNum">     145</span>              : //------------------------------------------------------------------------------</span>
+<span id="L146"><span class="lineNum">     146</span>              : // Local signals declaration</span>
+<span id="L147"><span class="lineNum">     147</span>              : //------------------------------------------------------------------------------</span>
+<span id="L148"><span class="lineNum">     148</span>              : </span>
+<span id="L149"><span class="lineNum">     149</span>              : // IRQ lines handling signals</span>
+<span id="L150"><span class="lineNum">     150</span>              : //------------------------------------------------------------------------------</span>
+<span id="L151"><span class="lineNum">     151</span>              : </span>
+<span id="L152"><span class="lineNum">     152</span>              : logic [SCR1_IRQ_VECT_NUM-1:0]           irq_lines;              // Internal IRQ lines</span>
+<span id="L153"><span class="lineNum">     153</span>              : `ifdef SCR1_IPIC_SYNC_EN</span>
+<span id="L154"><span class="lineNum">     154</span>              : logic [SCR1_IRQ_VECT_NUM-1:0]           irq_lines_sync;</span>
+<span id="L155"><span class="lineNum">     155</span>              : `endif // SCR1_IPIC_SYNC_EN</span>
+<span id="L156"><span class="lineNum">     156</span>              : logic [SCR1_IRQ_VECT_NUM-1:0]           irq_lines_dly;          // Internal IRQ lines delayed for 1 cycle</span>
+<span id="L157"><span class="lineNum">     157</span>              : logic [SCR1_IRQ_VECT_NUM-1:0]           irq_edge_detected;      // IRQ lines edge detected flags</span>
+<span id="L158"><span class="lineNum">     158</span>              : logic [SCR1_IRQ_VECT_NUM-1:0]           irq_lvl;                // IRQ lines level</span>
+<span id="L159"><span class="lineNum">     159</span>              : </span>
+<span id="L160"><span class="lineNum">     160</span>              : // IPIC registers</span>
+<span id="L161"><span class="lineNum">     161</span>              : //------------------------------------------------------------------------------</span>
+<span id="L162"><span class="lineNum">     162</span>              : </span>
+<span id="L163"><span class="lineNum">     163</span>              : // CISV register</span>
+<span id="L164"><span class="lineNum">     164</span>              : logic                                   ipic_cisv_upd;          // Current Interrupt Vecotr in Service register update</span>
+<span id="L165"><span class="lineNum">     165</span>              : logic [SCR1_IRQ_VECT_WIDTH-1:0]         ipic_cisv_ff;           // Current Interrupt Vector in Service register</span>
+<span id="L166"><span class="lineNum">     166</span>              : logic [SCR1_IRQ_VECT_WIDTH-1:0]         ipic_cisv_next;         // Current Interrupt Vector in Service register next value</span>
+<span id="L167"><span class="lineNum">     167</span>              : </span>
+<span id="L168"><span class="lineNum">     168</span>              : // CICS register (CICSR)</span>
+<span id="L169"><span class="lineNum">     169</span>              : logic                                   cicsr_wr_req;           // Write request to Current Interrupt Control Status register</span>
+<span id="L170"><span class="lineNum">     170</span>              : type_scr1_cicsr_s                       ipic_cicsr;             // Current Interrupt Control Status register</span>
+<span id="L171"><span class="lineNum">     171</span>              : </span>
+<span id="L172"><span class="lineNum">     172</span>              : // EOI register</span>
+<span id="L173"><span class="lineNum">     173</span>              : logic                                   eoi_wr_req;             // Write request to End of Interrupt register</span>
+<span id="L174"><span class="lineNum">     174</span>              : logic                                   ipic_eoi_req;           // Request to end the interrupt that is currently in service</span>
+<span id="L175"><span class="lineNum">     175</span>              : </span>
+<span id="L176"><span class="lineNum">     176</span>              : // SOI register</span>
+<span id="L177"><span class="lineNum">     177</span>              : logic                                   soi_wr_req;             // Write request to Start of Interrupt register</span>
+<span id="L178"><span class="lineNum">     178</span>              : logic                                   ipic_soi_req;           // Request to start the interrupt</span>
+<span id="L179"><span class="lineNum">     179</span>              : </span>
+<span id="L180"><span class="lineNum">     180</span>              : // IDX register (IDXR)</span>
+<span id="L181"><span class="lineNum">     181</span>              : logic                                   idxr_wr_req;            // Write request to Index register</span>
+<span id="L182"><span class="lineNum">     182</span>              : logic [SCR1_IRQ_IDX_WIDTH-1:0]          ipic_idxr_ff;           // Index register</span>
+<span id="L183"><span class="lineNum">     183</span>              : </span>
+<span id="L184"><span class="lineNum">     184</span>              : // IP register (IPR)</span>
+<span id="L185"><span class="lineNum">     185</span>              : logic                                   ipic_ipr_upd;           // Interrupt pending register update</span>
+<span id="L186"><span class="lineNum">     186</span>              : logic [SCR1_IRQ_VECT_NUM-1:0]           ipic_ipr_ff;            // Interrupt pending register</span>
+<span id="L187"><span class="lineNum">     187</span>              : logic [SCR1_IRQ_VECT_NUM-1:0]           ipic_ipr_next;          // Interrupt pending register next value</span>
+<span id="L188"><span class="lineNum">     188</span>              : logic [SCR1_IRQ_VECT_NUM-1:0]           ipic_ipr_clr_cond;      // Interrupt pending clear condition</span>
+<span id="L189"><span class="lineNum">     189</span>              : logic [SCR1_IRQ_VECT_NUM-1:0]           ipic_ipr_clr_req;       // Interrupt pending clear request</span>
+<span id="L190"><span class="lineNum">     190</span>              : logic [SCR1_IRQ_VECT_NUM-1:0]           ipic_ipr_clr;           // Interrupt pending clear operation</span>
+<span id="L191"><span class="lineNum">     191</span>              : </span>
+<span id="L192"><span class="lineNum">     192</span>              : // ISV register (ISVR)</span>
+<span id="L193"><span class="lineNum">     193</span>              : logic                                   ipic_isvr_upd;          // Interrupt Serviced register update</span>
+<span id="L194"><span class="lineNum">     194</span>              : logic [SCR1_IRQ_VECT_NUM-1:0]           ipic_isvr_ff;           // Interrupt Serviced register</span>
+<span id="L195"><span class="lineNum">     195</span>              : logic [SCR1_IRQ_VECT_NUM-1:0]           ipic_isvr_next;         // Interrupt Serviced register next value</span>
+<span id="L196"><span class="lineNum">     196</span>              : </span>
+<span id="L197"><span class="lineNum">     197</span>              : // IE register (IER)</span>
+<span id="L198"><span class="lineNum">     198</span>              : logic                                   ipic_ier_upd;           // Interrupt enable register update</span>
+<span id="L199"><span class="lineNum">     199</span>              : logic [SCR1_IRQ_VECT_NUM-1:0]           ipic_ier_ff;            // Interrupt enable register</span>
+<span id="L200"><span class="lineNum">     200</span>              : logic [SCR1_IRQ_VECT_NUM-1:0]           ipic_ier_next;          // Interrupt enable register next value</span>
+<span id="L201"><span class="lineNum">     201</span>              : </span>
+<span id="L202"><span class="lineNum">     202</span>              : // IM register (IMR)</span>
+<span id="L203"><span class="lineNum">     203</span>              : logic [SCR1_IRQ_VECT_NUM-1:0]           ipic_imr_ff;            // Interrupt mode register</span>
+<span id="L204"><span class="lineNum">     204</span>              : logic [SCR1_IRQ_VECT_NUM-1:0]           ipic_imr_next;          // Interrupt mode register next value</span>
+<span id="L205"><span class="lineNum">     205</span>              : </span>
+<span id="L206"><span class="lineNum">     206</span>              : // IINV register (IINVR)</span>
+<span id="L207"><span class="lineNum">     207</span>              : logic [SCR1_IRQ_VECT_NUM-1:0]           ipic_iinvr_ff;          // Interrupt Inversion register</span>
+<span id="L208"><span class="lineNum">     208</span>              : logic [SCR1_IRQ_VECT_NUM-1:0]           ipic_iinvr_next;        // Interrupt Inversion register next value</span>
+<span id="L209"><span class="lineNum">     209</span>              : </span>
+<span id="L210"><span class="lineNum">     210</span>              : // ICS register (ICSR)</span>
+<span id="L211"><span class="lineNum">     211</span>              : logic                                   icsr_wr_req;            // Write request to Interrupt Control Status register</span>
+<span id="L212"><span class="lineNum">     212</span>              : type_scr1_icsr_m_s                      ipic_icsr;              // Interrupt Control Status register</span>
+<span id="L213"><span class="lineNum">     213</span>              : </span>
+<span id="L214"><span class="lineNum">     214</span>              : // Priority interrupt generation signals</span>
+<span id="L215"><span class="lineNum">     215</span>              : //------------------------------------------------------------------------------</span>
+<span id="L216"><span class="lineNum">     216</span>              : </span>
+<span id="L217"><span class="lineNum">     217</span>              : // Serviced interrupt signals</span>
+<span id="L218"><span class="lineNum">     218</span>              : logic                                   irq_serv_vd;            // There is an interrupt in service</span>
+<span id="L219"><span class="lineNum">     219</span>              : logic [SCR1_IRQ_IDX_WIDTH-1:0]          irq_serv_idx;           // Index of an interrupt that is currently in service</span>
+<span id="L220"><span class="lineNum">     220</span>              : </span>
+<span id="L221"><span class="lineNum">     221</span>              : // Requested interrupt signals</span>
+<span id="L222"><span class="lineNum">     222</span>              : logic                                   irq_req_vd;             // There is a requested interrupt</span>
+<span id="L223"><span class="lineNum">     223</span>              : logic [SCR1_IRQ_IDX_WIDTH-1:0]          irq_req_idx;            // Index of a requested interrupt</span>
+<span id="L224"><span class="lineNum">     224</span>              : </span>
+<span id="L225"><span class="lineNum">     225</span>              : // Interrupt requested on &quot;end of the previous interrupt&quot; signals</span>
+<span id="L226"><span class="lineNum">     226</span>              : logic                                   irq_eoi_req_vd;         // There is a requested interrupt when the previous one has ended</span>
+<span id="L227"><span class="lineNum">     227</span>              : logic [SCR1_IRQ_IDX_WIDTH-1:0]          irq_eoi_req_idx;        // Index of an interrupt requested when the previous one has ended</span>
+<span id="L228"><span class="lineNum">     228</span>              : </span>
+<span id="L229"><span class="lineNum">     229</span>              : logic [SCR1_IRQ_VECT_NUM-1:0]           irq_req_v;              // Vector of interrupts that are pending and enabled</span>
+<span id="L230"><span class="lineNum">     230</span>              : </span>
+<span id="L231"><span class="lineNum">     231</span>              : logic                                   irq_start_vd;           // Request to start an interrupt is valid</span>
+<span id="L232"><span class="lineNum">     232</span>              : logic                                   irq_hi_prior_pnd;       // There is a pending IRQ with a priority higher than of the interrupt that is currently in service</span>
+<span id="L233"><span class="lineNum">     233</span>              : </span>
+<span id="L234"><span class="lineNum">     234</span>              : type_scr1_search_one_16_s               irr_priority;           // Structure for vd and idx of the requested interrupt</span>
+<span id="L235"><span class="lineNum">     235</span>              : type_scr1_search_one_16_s               isvr_priority_eoi;      // Structure for vd and idx of the interrupt requested when the previous interrupt has ended</span>
+<span id="L236"><span class="lineNum">     236</span>              : logic [SCR1_IRQ_VECT_NUM-1:0]           ipic_isvr_eoi;          // Interrupt Serviced register when the previous interrupt has ended</span>
+<span id="L237"><span class="lineNum">     237</span>              : </span>
+<span id="L238"><span class="lineNum">     238</span>              : //------------------------------------------------------------------------------</span>
+<span id="L239"><span class="lineNum">     239</span>              : // IRQ lines handling</span>
+<span id="L240"><span class="lineNum">     240</span>              : //------------------------------------------------------------------------------</span>
+<span id="L241"><span class="lineNum">     241</span>              : </span>
+<span id="L242"><span class="lineNum">     242</span>              : `ifdef SCR1_IPIC_SYNC_EN</span>
+<span id="L243"><span class="lineNum">     243</span>              : // IRQ lines synchronization</span>
+<span id="L244"><span class="lineNum">     244</span>              : //------------------------------------------------------------------------------</span>
+<span id="L245"><span class="lineNum">     245</span>              : </span>
+<span id="L246"><span class="lineNum">     246</span> <span class="tlaGNC">     2568992 : always_ff @(posedge clk, negedge rst_n) begin</span></span>
+<span id="L247"><span class="lineNum">     247</span> <span class="tlaGNC">        3586 :     if (~rst_n) begin</span></span>
+<span id="L248"><span class="lineNum">     248</span> <span class="tlaGNC">        1793 :         irq_lines_sync &lt;= '0;</span></span>
+<span id="L249"><span class="lineNum">     249</span> <span class="tlaGNC">        1793 :         irq_lines      &lt;= '0;</span></span>
+<span id="L250"><span class="lineNum">     250</span> <span class="tlaGNC">     1282703 :     end else begin</span></span>
+<span id="L251"><span class="lineNum">     251</span> <span class="tlaGNC">     1282703 :         irq_lines_sync &lt;= soc2ipic_irq_lines_i;</span></span>
+<span id="L252"><span class="lineNum">     252</span> <span class="tlaGNC">     1282703 :         irq_lines      &lt;= irq_lines_sync;</span></span>
+<span id="L253"><span class="lineNum">     253</span>              :     end</span>
+<span id="L254"><span class="lineNum">     254</span>              : end</span>
+<span id="L255"><span class="lineNum">     255</span>              : `else // SCR1_IPIC_SYNC_EN</span>
+<span id="L256"><span class="lineNum">     256</span>              : assign irq_lines = soc2ipic_irq_lines_i;</span>
+<span id="L257"><span class="lineNum">     257</span>              : `endif // SCR1_IPIC_SYNC_EN</span>
+<span id="L258"><span class="lineNum">     258</span>              : </span>
+<span id="L259"><span class="lineNum">     259</span>              : // IRQ lines level detection</span>
+<span id="L260"><span class="lineNum">     260</span>              : //------------------------------------------------------------------------------</span>
+<span id="L261"><span class="lineNum">     261</span>              : </span>
+<span id="L262"><span class="lineNum">     262</span>              : assign irq_lvl = irq_lines ^ ipic_iinvr_next;</span>
+<span id="L263"><span class="lineNum">     263</span>              : </span>
+<span id="L264"><span class="lineNum">     264</span>              : // IRQ lines edge detection</span>
+<span id="L265"><span class="lineNum">     265</span>              : //------------------------------------------------------------------------------</span>
+<span id="L266"><span class="lineNum">     266</span>              : </span>
+<span id="L267"><span class="lineNum">     267</span> <span class="tlaGNC">     2568992 : always_ff @(negedge rst_n, posedge clk) begin</span></span>
+<span id="L268"><span class="lineNum">     268</span> <span class="tlaGNC">        3586 :     if (~rst_n) begin</span></span>
+<span id="L269"><span class="lineNum">     269</span> <span class="tlaGNC">        1793 :         irq_lines_dly &lt;= '0;</span></span>
+<span id="L270"><span class="lineNum">     270</span> <span class="tlaGNC">     1282703 :     end else begin</span></span>
+<span id="L271"><span class="lineNum">     271</span> <span class="tlaGNC">     1282703 :         irq_lines_dly &lt;= irq_lines;</span></span>
+<span id="L272"><span class="lineNum">     272</span>              :     end</span>
+<span id="L273"><span class="lineNum">     273</span>              : end</span>
+<span id="L274"><span class="lineNum">     274</span>              : </span>
+<span id="L275"><span class="lineNum">     275</span>              : assign irq_edge_detected = (irq_lines_dly ^ irq_lines) &amp; irq_lvl;</span>
+<span id="L276"><span class="lineNum">     276</span>              : </span>
+<span id="L277"><span class="lineNum">     277</span>              : //------------------------------------------------------------------------------</span>
+<span id="L278"><span class="lineNum">     278</span>              : // IPIC registers read/write interface</span>
+<span id="L279"><span class="lineNum">     279</span>              : //------------------------------------------------------------------------------</span>
+<span id="L280"><span class="lineNum">     280</span>              : </span>
+<span id="L281"><span class="lineNum">     281</span>              : // Read Logic</span>
+<span id="L282"><span class="lineNum">     282</span>              : //------------------------------------------------------------------------------</span>
+<span id="L283"><span class="lineNum">     283</span>              : </span>
+<span id="L284"><span class="lineNum">     284</span>              : // Read data multiplexer</span>
+<span id="L285"><span class="lineNum">     285</span> <span class="tlaGNC">           2 : always_comb begin</span></span>
+<span id="L286"><span class="lineNum">     286</span> <span class="tlaGNC">           1 :     ipic2csr_rdata_o  = '0;</span></span>
+<span id="L287"><span class="lineNum">     287</span>              : </span>
+<span id="L288"><span class="lineNum">     288</span> <span class="tlaUNC tlaBgUNC">           0 :     if (csr2ipic_r_req_i) begin</span></span>
+<span id="L289"><span class="lineNum">     289</span> <span class="tlaUNC">           0 :         case (csr2ipic_addr_i)</span></span>
+<span id="L290"><span class="lineNum">     290</span> <span class="tlaUNC">           0 :             SCR1_IPIC_CISV : begin</span></span>
+<span id="L291"><span class="lineNum">     291</span> <span class="tlaUNC">           0 :                 ipic2csr_rdata_o[SCR1_IRQ_VECT_WIDTH-1:0] = irq_serv_vd</span></span>
+<span id="L292"><span class="lineNum">     292</span> <span class="tlaUNC">           0 :                                                           ? ipic_cisv_ff</span></span>
+<span id="L293"><span class="lineNum">     293</span> <span class="tlaUNC">           0 :                                                           : SCR1_IRQ_VOID_VECT_NUM;</span></span>
+<span id="L294"><span class="lineNum">     294</span>              :             end</span>
+<span id="L295"><span class="lineNum">     295</span> <span class="tlaUNC">           0 :             SCR1_IPIC_CICSR : begin</span></span>
+<span id="L296"><span class="lineNum">     296</span> <span class="tlaUNC">           0 :                 ipic2csr_rdata_o[SCR1_IPIC_ICSR_IP]  = ipic_cicsr.ip;</span></span>
+<span id="L297"><span class="lineNum">     297</span> <span class="tlaUNC">           0 :                 ipic2csr_rdata_o[SCR1_IPIC_ICSR_IE]  = ipic_cicsr.ie;</span></span>
+<span id="L298"><span class="lineNum">     298</span>              :             end</span>
+<span id="L299"><span class="lineNum">     299</span> <span class="tlaUNC">           0 :             SCR1_IPIC_IPR : begin</span></span>
+<span id="L300"><span class="lineNum">     300</span> <span class="tlaUNC">           0 :                 ipic2csr_rdata_o = `SCR1_XLEN'(ipic_ipr_ff);</span></span>
+<span id="L301"><span class="lineNum">     301</span>              :             end</span>
+<span id="L302"><span class="lineNum">     302</span> <span class="tlaUNC">           0 :             SCR1_IPIC_ISVR : begin</span></span>
+<span id="L303"><span class="lineNum">     303</span> <span class="tlaUNC">           0 :                 ipic2csr_rdata_o = `SCR1_XLEN'(ipic_isvr_ff);</span></span>
+<span id="L304"><span class="lineNum">     304</span>              :             end</span>
+<span id="L305"><span class="lineNum">     305</span>              :             SCR1_IPIC_EOI,</span>
+<span id="L306"><span class="lineNum">     306</span> <span class="tlaUNC">           0 :             SCR1_IPIC_SOI : begin</span></span>
+<span id="L307"><span class="lineNum">     307</span> <span class="tlaUNC">           0 :                 ipic2csr_rdata_o = '0;</span></span>
+<span id="L308"><span class="lineNum">     308</span>              :             end</span>
+<span id="L309"><span class="lineNum">     309</span> <span class="tlaUNC">           0 :             SCR1_IPIC_IDX : begin</span></span>
+<span id="L310"><span class="lineNum">     310</span> <span class="tlaUNC">           0 :                 ipic2csr_rdata_o = `SCR1_XLEN'(ipic_idxr_ff);</span></span>
+<span id="L311"><span class="lineNum">     311</span>              :             end</span>
+<span id="L312"><span class="lineNum">     312</span> <span class="tlaUNC">           0 :             SCR1_IPIC_ICSR : begin</span></span>
+<span id="L313"><span class="lineNum">     313</span> <span class="tlaUNC">           0 :                 ipic2csr_rdata_o[SCR1_IPIC_ICSR_IP]      = ipic_icsr.ip;</span></span>
+<span id="L314"><span class="lineNum">     314</span> <span class="tlaUNC">           0 :                 ipic2csr_rdata_o[SCR1_IPIC_ICSR_IE]      = ipic_icsr.ie;</span></span>
+<span id="L315"><span class="lineNum">     315</span> <span class="tlaUNC">           0 :                 ipic2csr_rdata_o[SCR1_IPIC_ICSR_IM]      = ipic_icsr.im;</span></span>
+<span id="L316"><span class="lineNum">     316</span> <span class="tlaUNC">           0 :                 ipic2csr_rdata_o[SCR1_IPIC_ICSR_INV]     = ipic_icsr.inv;</span></span>
+<span id="L317"><span class="lineNum">     317</span> <span class="tlaUNC">           0 :                 ipic2csr_rdata_o[SCR1_IPIC_ICSR_PRV_MSB:</span></span>
+<span id="L318"><span class="lineNum">     318</span> <span class="tlaUNC">           0 :                                  SCR1_IPIC_ICSR_PRV_LSB] = SCR1_IPIC_PRV_M;</span></span>
+<span id="L319"><span class="lineNum">     319</span> <span class="tlaUNC">           0 :                 ipic2csr_rdata_o[SCR1_IPIC_ICSR_IS]      = ipic_icsr.isv;</span></span>
+<span id="L320"><span class="lineNum">     320</span> <span class="tlaUNC">           0 :                 ipic2csr_rdata_o[SCR1_IPIC_ICSR_LN_MSB-1:</span></span>
+<span id="L321"><span class="lineNum">     321</span> <span class="tlaUNC">           0 :                                  SCR1_IPIC_ICSR_LN_LSB]  = ipic_icsr.line;</span></span>
+<span id="L322"><span class="lineNum">     322</span>              :             end</span>
+<span id="L323"><span class="lineNum">     323</span> <span class="tlaUNC">           0 :             default : begin</span></span>
+<span id="L324"><span class="lineNum">     324</span> <span class="tlaUNC">           0 :                 ipic2csr_rdata_o = 'x;</span></span>
+<span id="L325"><span class="lineNum">     325</span>              :             end</span>
+<span id="L326"><span class="lineNum">     326</span>              :         endcase</span>
+<span id="L327"><span class="lineNum">     327</span>              :     end</span>
+<span id="L328"><span class="lineNum">     328</span>              : end</span>
+<span id="L329"><span class="lineNum">     329</span>              : </span>
+<span id="L330"><span class="lineNum">     330</span>              : // Write logic</span>
+<span id="L331"><span class="lineNum">     331</span>              : //------------------------------------------------------------------------------</span>
+<span id="L332"><span class="lineNum">     332</span>              : </span>
+<span id="L333"><span class="lineNum">     333</span>              : // Register selection</span>
+<span id="L334"><span class="lineNum">     334</span> <span class="tlaGNC tlaBgGNC">           2 : always_comb begin</span></span>
+<span id="L335"><span class="lineNum">     335</span> <span class="tlaGNC">           1 :     cicsr_wr_req = 1'b0;</span></span>
+<span id="L336"><span class="lineNum">     336</span> <span class="tlaGNC">           1 :     eoi_wr_req   = 1'b0;</span></span>
+<span id="L337"><span class="lineNum">     337</span> <span class="tlaGNC">           1 :     soi_wr_req   = 1'b0;</span></span>
+<span id="L338"><span class="lineNum">     338</span> <span class="tlaGNC">           1 :     idxr_wr_req  = 1'b0;</span></span>
+<span id="L339"><span class="lineNum">     339</span> <span class="tlaGNC">           1 :     icsr_wr_req  = 1'b0;</span></span>
+<span id="L340"><span class="lineNum">     340</span> <span class="tlaGNC">          16 :     if (csr2ipic_w_req_i) begin</span></span>
+<span id="L341"><span class="lineNum">     341</span> <span class="tlaGNC">           8 :         case (csr2ipic_addr_i)</span></span>
+<span id="L342"><span class="lineNum">     342</span> <span class="tlaUNC tlaBgUNC">           0 :             SCR1_IPIC_CISV : begin end // Quiet Read-Only</span></span>
+<span id="L343"><span class="lineNum">     343</span> <span class="tlaUNC">           0 :             SCR1_IPIC_CICSR: cicsr_wr_req = 1'b1;</span></span>
+<span id="L344"><span class="lineNum">     344</span> <span class="tlaUNC">           0 :             SCR1_IPIC_IPR  : begin end</span></span>
+<span id="L345"><span class="lineNum">     345</span> <span class="tlaUNC">           0 :             SCR1_IPIC_ISVR : begin end // Quiet Read-Only</span></span>
+<span id="L346"><span class="lineNum">     346</span> <span class="tlaGNC tlaBgGNC">           6 :             SCR1_IPIC_EOI  : eoi_wr_req   = 1'b1;</span></span>
+<span id="L347"><span class="lineNum">     347</span> <span class="tlaGNC">           6 :             SCR1_IPIC_SOI  : soi_wr_req   = 1'b1;</span></span>
+<span id="L348"><span class="lineNum">     348</span> <span class="tlaGNC">           2 :             SCR1_IPIC_IDX  : idxr_wr_req  = 1'b1;</span></span>
+<span id="L349"><span class="lineNum">     349</span> <span class="tlaGNC">           2 :             SCR1_IPIC_ICSR : icsr_wr_req  = 1'b1;</span></span>
+<span id="L350"><span class="lineNum">     350</span> <span class="tlaUNC tlaBgUNC">           0 :             default : begin // Illegal IPIC register address</span></span>
+<span id="L351"><span class="lineNum">     351</span> <span class="tlaUNC">           0 :                 cicsr_wr_req = 'x;</span></span>
+<span id="L352"><span class="lineNum">     352</span> <span class="tlaUNC">           0 :                 eoi_wr_req   = 'x;</span></span>
+<span id="L353"><span class="lineNum">     353</span> <span class="tlaUNC">           0 :                 soi_wr_req   = 'x;</span></span>
+<span id="L354"><span class="lineNum">     354</span> <span class="tlaUNC">           0 :                 idxr_wr_req  = 'x;</span></span>
+<span id="L355"><span class="lineNum">     355</span> <span class="tlaUNC">           0 :                 icsr_wr_req  = 'x;</span></span>
+<span id="L356"><span class="lineNum">     356</span>              :             end</span>
+<span id="L357"><span class="lineNum">     357</span>              :         endcase</span>
+<span id="L358"><span class="lineNum">     358</span>              :     end</span>
+<span id="L359"><span class="lineNum">     359</span>              : end</span>
+<span id="L360"><span class="lineNum">     360</span>              : </span>
+<span id="L361"><span class="lineNum">     361</span>              : //------------------------------------------------------------------------------</span>
+<span id="L362"><span class="lineNum">     362</span>              : // IPIC registers</span>
+<span id="L363"><span class="lineNum">     363</span>              : //------------------------------------------------------------------------------</span>
+<span id="L364"><span class="lineNum">     364</span>              : //</span>
+<span id="L365"><span class="lineNum">     365</span>              :  // Registers:</span>
+<span id="L366"><span class="lineNum">     366</span>              :  // - Current Interrupt Vector in Service (CISV) register</span>
+<span id="L367"><span class="lineNum">     367</span>              :  // - Current Interrupt Control Status (CICSR) register</span>
+<span id="L368"><span class="lineNum">     368</span>              :  // - End of Interrupt (EOI) register</span>
+<span id="L369"><span class="lineNum">     369</span>              :  // - Start of Interrupt (SOI) register</span>
+<span id="L370"><span class="lineNum">     370</span>              :  // - Index (IDX) register</span>
+<span id="L371"><span class="lineNum">     371</span>              :  // - Interrupt Pending Register (IPR)</span>
+<span id="L372"><span class="lineNum">     372</span>              :  // - Interrupt Serviced Register (ISVR)</span>
+<span id="L373"><span class="lineNum">     373</span>              :  // - Interrupt Enable Register (IER)</span>
+<span id="L374"><span class="lineNum">     374</span>              :  // - Interrupt Mode Register (IMR)</span>
+<span id="L375"><span class="lineNum">     375</span>              :  // - Interrupt Inversion Register (IINVR)</span>
+<span id="L376"><span class="lineNum">     376</span>              :  // - Interrupt Control Status Register (ICSR)</span>
+<span id="L377"><span class="lineNum">     377</span>              : //</span>
+<span id="L378"><span class="lineNum">     378</span>              : </span>
+<span id="L379"><span class="lineNum">     379</span>              : // CISV register</span>
+<span id="L380"><span class="lineNum">     380</span>              : //------------------------------------------------------------------------------</span>
+<span id="L381"><span class="lineNum">     381</span>              : // Contains number of the interrupt vector currently in service. When no</span>
+<span id="L382"><span class="lineNum">     382</span>              : // interrupts are in service, contains number of the void interrupt vector (0x10).</span>
+<span id="L383"><span class="lineNum">     383</span>              : // The register cannot contain all 0's</span>
+<span id="L384"><span class="lineNum">     384</span>              : </span>
+<span id="L385"><span class="lineNum">     385</span>              : assign ipic_cisv_upd = irq_start_vd | ipic_eoi_req;</span>
+<span id="L386"><span class="lineNum">     386</span>              : </span>
+<span id="L387"><span class="lineNum">     387</span> <span class="tlaGNC tlaBgGNC">     2568992 : always_ff @(negedge rst_n, posedge clk) begin</span></span>
+<span id="L388"><span class="lineNum">     388</span> <span class="tlaGNC">        3586 :     if (~rst_n) begin</span></span>
+<span id="L389"><span class="lineNum">     389</span> <span class="tlaGNC">        1793 :         ipic_cisv_ff &lt;= SCR1_IRQ_VOID_VECT_NUM;</span></span>
+<span id="L390"><span class="lineNum">     390</span> <span class="tlaGNC">           4 :     end else if (ipic_cisv_upd) begin</span></span>
+<span id="L391"><span class="lineNum">     391</span> <span class="tlaGNC">           2 :         ipic_cisv_ff &lt;= ipic_cisv_next;</span></span>
+<span id="L392"><span class="lineNum">     392</span>              :     end</span>
+<span id="L393"><span class="lineNum">     393</span>              : end</span>
+<span id="L394"><span class="lineNum">     394</span>              : </span>
+<span id="L395"><span class="lineNum">     395</span>              : assign ipic_cisv_next = irq_start_vd ? {1'b0, irq_req_idx}</span>
+<span id="L396"><span class="lineNum">     396</span>              :                       : ipic_eoi_req ? irq_eoi_req_vd ? {1'b0, irq_eoi_req_idx}</span>
+<span id="L397"><span class="lineNum">     397</span>              :                                                       : SCR1_IRQ_VOID_VECT_NUM</span>
+<span id="L398"><span class="lineNum">     398</span>              :                                      : 1'b0;</span>
+<span id="L399"><span class="lineNum">     399</span>              : </span>
+<span id="L400"><span class="lineNum">     400</span>              : assign irq_serv_idx = ipic_cisv_ff[SCR1_IRQ_VECT_WIDTH-2:0];</span>
+<span id="L401"><span class="lineNum">     401</span>              : assign irq_serv_vd  = ~ipic_cisv_ff[SCR1_IRQ_VECT_WIDTH-1];</span>
+<span id="L402"><span class="lineNum">     402</span>              : </span>
+<span id="L403"><span class="lineNum">     403</span>              : // CICSR register</span>
+<span id="L404"><span class="lineNum">     404</span>              : //------------------------------------------------------------------------------</span>
+<span id="L405"><span class="lineNum">     405</span>              : // Shows whether the interrupt currently in service is pending and enabled</span>
+<span id="L406"><span class="lineNum">     406</span>              : </span>
+<span id="L407"><span class="lineNum">     407</span>              : assign ipic_cicsr.ip = ipic_ipr_ff[irq_serv_idx] &amp; irq_serv_vd;</span>
+<span id="L408"><span class="lineNum">     408</span>              : assign ipic_cicsr.ie = ipic_ier_ff[irq_serv_idx] &amp; irq_serv_vd;</span>
+<span id="L409"><span class="lineNum">     409</span>              : </span>
+<span id="L410"><span class="lineNum">     410</span>              : // EOI register</span>
+<span id="L411"><span class="lineNum">     411</span>              : //------------------------------------------------------------------------------</span>
+<span id="L412"><span class="lineNum">     412</span>              : // Writing any value to EOI register ends the interrupt which is currently in service</span>
+<span id="L413"><span class="lineNum">     413</span>              : </span>
+<span id="L414"><span class="lineNum">     414</span>              : assign ipic_eoi_req = eoi_wr_req &amp; irq_serv_vd;</span>
+<span id="L415"><span class="lineNum">     415</span>              : </span>
+<span id="L416"><span class="lineNum">     416</span>              : // SOI register</span>
+<span id="L417"><span class="lineNum">     417</span>              : //------------------------------------------------------------------------------</span>
+<span id="L418"><span class="lineNum">     418</span>              : // Writing any value to SOI activates start of interrupt if one of the following</span>
+<span id="L419"><span class="lineNum">     419</span>              : // conditions is true:</span>
+<span id="L420"><span class="lineNum">     420</span>              : // - There is at least one pending interrupt with IE and ISR is zero</span>
+<span id="L421"><span class="lineNum">     421</span>              : // - There is at least one pending interrupt with IE and higher priority than the</span>
+<span id="L422"><span class="lineNum">     422</span>              : // interrupts currently in service</span>
+<span id="L423"><span class="lineNum">     423</span>              : </span>
+<span id="L424"><span class="lineNum">     424</span>              : assign ipic_soi_req = soi_wr_req &amp; irq_req_vd;</span>
+<span id="L425"><span class="lineNum">     425</span>              : </span>
+<span id="L426"><span class="lineNum">     426</span>              : // IDX register</span>
+<span id="L427"><span class="lineNum">     427</span>              : //------------------------------------------------------------------------------</span>
+<span id="L428"><span class="lineNum">     428</span>              : // Defines the number of interrupt vector which is accessed through the IPIC_ICSR</span>
+<span id="L429"><span class="lineNum">     429</span>              : // register</span>
+<span id="L430"><span class="lineNum">     430</span>              : </span>
+<span id="L431"><span class="lineNum">     431</span> <span class="tlaGNC">     2568992 : always_ff @(negedge rst_n, posedge clk) begin</span></span>
+<span id="L432"><span class="lineNum">     432</span> <span class="tlaGNC">        3586 :     if (~rst_n) begin</span></span>
+<span id="L433"><span class="lineNum">     433</span> <span class="tlaGNC">        1793 :         ipic_idxr_ff &lt;= '0;</span></span>
+<span id="L434"><span class="lineNum">     434</span> <span class="tlaGNC">           2 :     end else if (idxr_wr_req) begin</span></span>
+<span id="L435"><span class="lineNum">     435</span> <span class="tlaGNC">           1 :         ipic_idxr_ff &lt;= csr2ipic_wdata_i[SCR1_IRQ_IDX_WIDTH-1:0];</span></span>
+<span id="L436"><span class="lineNum">     436</span>              :     end</span>
+<span id="L437"><span class="lineNum">     437</span>              : end</span>
+<span id="L438"><span class="lineNum">     438</span>              : </span>
+<span id="L439"><span class="lineNum">     439</span>              : // IPR</span>
+<span id="L440"><span class="lineNum">     440</span>              : //------------------------------------------------------------------------------</span>
+<span id="L441"><span class="lineNum">     441</span>              : // For every IRQ line shows whether there is a pending interrupt</span>
+<span id="L442"><span class="lineNum">     442</span>              : </span>
+<span id="L443"><span class="lineNum">     443</span>              : assign ipic_ipr_upd = (ipic_ipr_next != ipic_ipr_ff);</span>
+<span id="L444"><span class="lineNum">     444</span>              : </span>
+<span id="L445"><span class="lineNum">     445</span> <span class="tlaGNC">     2568992 : always_ff @(negedge rst_n, posedge clk) begin</span></span>
+<span id="L446"><span class="lineNum">     446</span> <span class="tlaGNC">        3586 :     if (~rst_n) begin</span></span>
+<span id="L447"><span class="lineNum">     447</span> <span class="tlaGNC">        1793 :         ipic_ipr_ff &lt;= '0;</span></span>
+<span id="L448"><span class="lineNum">     448</span> <span class="tlaGNC">           4 :     end else if (ipic_ipr_upd) begin</span></span>
+<span id="L449"><span class="lineNum">     449</span> <span class="tlaGNC">           2 :         ipic_ipr_ff &lt;= ipic_ipr_next;</span></span>
+<span id="L450"><span class="lineNum">     450</span>              :     end</span>
+<span id="L451"><span class="lineNum">     451</span>              : end</span>
+<span id="L452"><span class="lineNum">     452</span>              : </span>
+<span id="L453"><span class="lineNum">     453</span> <span class="tlaGNC">           2 : always_comb begin</span></span>
+<span id="L454"><span class="lineNum">     454</span> <span class="tlaGNC">           1 :     ipic_ipr_clr_req = '0;</span></span>
+<span id="L455"><span class="lineNum">     455</span> <span class="tlaGNC">          16 :     if (csr2ipic_w_req_i) begin</span></span>
+<span id="L456"><span class="lineNum">     456</span> <span class="tlaGNC">           8 :         case (csr2ipic_addr_i)</span></span>
+<span id="L457"><span class="lineNum">     457</span> <span class="tlaUNC tlaBgUNC">           0 :             SCR1_IPIC_CICSR: ipic_ipr_clr_req[irq_serv_idx] = csr2ipic_wdata_i[SCR1_IPIC_ICSR_IP]</span></span>
+<span id="L458"><span class="lineNum">     458</span> <span class="tlaUNC">           0 :                                                             &amp; irq_serv_vd;</span></span>
+<span id="L459"><span class="lineNum">     459</span> <span class="tlaUNC">           0 :             SCR1_IPIC_IPR  : ipic_ipr_clr_req               = csr2ipic_wdata_i[SCR1_IRQ_VECT_NUM-1:0];</span></span>
+<span id="L460"><span class="lineNum">     460</span> <span class="tlaGNC tlaBgGNC">           6 :             SCR1_IPIC_SOI  : ipic_ipr_clr_req[irq_req_idx]  = irq_req_vd;</span></span>
+<span id="L461"><span class="lineNum">     461</span> <span class="tlaGNC">           2 :             SCR1_IPIC_ICSR : ipic_ipr_clr_req[ipic_idxr_ff] = csr2ipic_wdata_i[SCR1_IPIC_ICSR_IP];</span></span>
+<span id="L462"><span class="lineNum">     462</span> <span class="tlaGNC">           8 :             default        : begin end</span></span>
+<span id="L463"><span class="lineNum">     463</span>              :         endcase</span>
+<span id="L464"><span class="lineNum">     464</span>              :     end</span>
+<span id="L465"><span class="lineNum">     465</span>              : end</span>
+<span id="L466"><span class="lineNum">     466</span>              : </span>
+<span id="L467"><span class="lineNum">     467</span>              : assign ipic_ipr_clr_cond = ~irq_lvl | ipic_imr_next;</span>
+<span id="L468"><span class="lineNum">     468</span>              : assign ipic_ipr_clr      = ipic_ipr_clr_req &amp; ipic_ipr_clr_cond;</span>
+<span id="L469"><span class="lineNum">     469</span>              : </span>
+<span id="L470"><span class="lineNum">     470</span> <span class="tlaGNC">           2 : always_comb begin</span></span>
+<span id="L471"><span class="lineNum">     471</span> <span class="tlaGNC">           1 :     ipic_ipr_next = '0;</span></span>
+<span id="L472"><span class="lineNum">     472</span> <span class="tlaGNC">           1 :     for (int unsigned i=0; i&lt;SCR1_IRQ_VECT_NUM; ++i) begin</span></span>
+<span id="L473"><span class="lineNum">     473</span> <span class="tlaGNC">          16 :         ipic_ipr_next[i] = ipic_ipr_clr[i] ? 1'b0</span></span>
+<span id="L474"><span class="lineNum">     474</span> <span class="tlaGNC">          16 :                          : ~ipic_imr_ff[i] ? irq_lvl[i]</span></span>
+<span id="L475"><span class="lineNum">     475</span> <span class="tlaGNC">          16 :                                            : ipic_ipr_ff[i] | irq_edge_detected[i];</span></span>
+<span id="L476"><span class="lineNum">     476</span>              :     end</span>
+<span id="L477"><span class="lineNum">     477</span>              : end</span>
+<span id="L478"><span class="lineNum">     478</span>              : </span>
+<span id="L479"><span class="lineNum">     479</span>              : // ISVR</span>
+<span id="L480"><span class="lineNum">     480</span>              : //------------------------------------------------------------------------------</span>
+<span id="L481"><span class="lineNum">     481</span>              : // For every IRQ line shows whether the interrupt is in service or not</span>
+<span id="L482"><span class="lineNum">     482</span>              : </span>
+<span id="L483"><span class="lineNum">     483</span>              : assign ipic_isvr_upd = irq_start_vd | ipic_eoi_req;</span>
+<span id="L484"><span class="lineNum">     484</span>              : </span>
+<span id="L485"><span class="lineNum">     485</span> <span class="tlaGNC">     2568992 : always_ff @(negedge rst_n, posedge clk) begin</span></span>
+<span id="L486"><span class="lineNum">     486</span> <span class="tlaGNC">        3586 :     if (~rst_n) begin</span></span>
+<span id="L487"><span class="lineNum">     487</span> <span class="tlaGNC">        1793 :         ipic_isvr_ff &lt;= '0;</span></span>
+<span id="L488"><span class="lineNum">     488</span> <span class="tlaGNC">           4 :     end else if (ipic_isvr_upd) begin</span></span>
+<span id="L489"><span class="lineNum">     489</span> <span class="tlaGNC">           2 :         ipic_isvr_ff &lt;= ipic_isvr_next;</span></span>
+<span id="L490"><span class="lineNum">     490</span>              :     end</span>
+<span id="L491"><span class="lineNum">     491</span>              : end</span>
+<span id="L492"><span class="lineNum">     492</span>              : </span>
+<span id="L493"><span class="lineNum">     493</span> <span class="tlaGNC">           2 : always_comb begin</span></span>
+<span id="L494"><span class="lineNum">     494</span> <span class="tlaGNC">           1 :     ipic_isvr_eoi = ipic_isvr_ff;</span></span>
+<span id="L495"><span class="lineNum">     495</span> <span class="tlaGNC">           4 :     if (irq_serv_vd) begin</span></span>
+<span id="L496"><span class="lineNum">     496</span> <span class="tlaGNC">           2 :         ipic_isvr_eoi[irq_serv_idx] = 1'b0;</span></span>
+<span id="L497"><span class="lineNum">     497</span>              :     end</span>
+<span id="L498"><span class="lineNum">     498</span>              : end</span>
+<span id="L499"><span class="lineNum">     499</span>              : </span>
+<span id="L500"><span class="lineNum">     500</span> <span class="tlaGNC">           2 : always_comb begin</span></span>
+<span id="L501"><span class="lineNum">     501</span> <span class="tlaGNC">           1 :     ipic_isvr_next = ipic_isvr_ff;</span></span>
+<span id="L502"><span class="lineNum">     502</span> <span class="tlaGNC">           2 :     if (irq_start_vd) begin</span></span>
+<span id="L503"><span class="lineNum">     503</span> <span class="tlaGNC">           1 :         ipic_isvr_next[irq_req_idx] = 1'b1;</span></span>
+<span id="L504"><span class="lineNum">     504</span> <span class="tlaGNC">           2 :     end else if (ipic_eoi_req) begin</span></span>
+<span id="L505"><span class="lineNum">     505</span> <span class="tlaGNC">           1 :         ipic_isvr_next = ipic_isvr_eoi;</span></span>
+<span id="L506"><span class="lineNum">     506</span>              :     end</span>
+<span id="L507"><span class="lineNum">     507</span>              : end</span>
+<span id="L508"><span class="lineNum">     508</span>              : </span>
+<span id="L509"><span class="lineNum">     509</span>              : // IER</span>
+<span id="L510"><span class="lineNum">     510</span>              : //------------------------------------------------------------------------------</span>
+<span id="L511"><span class="lineNum">     511</span>              : // Enables/disables interrupt for every IRQ line</span>
+<span id="L512"><span class="lineNum">     512</span>              : </span>
+<span id="L513"><span class="lineNum">     513</span>              : assign ipic_ier_upd = cicsr_wr_req | icsr_wr_req;</span>
+<span id="L514"><span class="lineNum">     514</span>              : </span>
+<span id="L515"><span class="lineNum">     515</span> <span class="tlaGNC">     2568992 : always_ff @(negedge rst_n, posedge clk) begin</span></span>
+<span id="L516"><span class="lineNum">     516</span> <span class="tlaGNC">        3586 :     if (~rst_n) begin</span></span>
+<span id="L517"><span class="lineNum">     517</span> <span class="tlaGNC">        1793 :         ipic_ier_ff &lt;= '0;</span></span>
+<span id="L518"><span class="lineNum">     518</span> <span class="tlaGNC">           2 :     end else if (ipic_ier_upd) begin</span></span>
+<span id="L519"><span class="lineNum">     519</span> <span class="tlaGNC">           1 :         ipic_ier_ff &lt;= ipic_ier_next;</span></span>
+<span id="L520"><span class="lineNum">     520</span>              :     end</span>
+<span id="L521"><span class="lineNum">     521</span>              : end</span>
+<span id="L522"><span class="lineNum">     522</span>              : </span>
+<span id="L523"><span class="lineNum">     523</span> <span class="tlaGNC">           2 : always_comb begin</span></span>
+<span id="L524"><span class="lineNum">     524</span> <span class="tlaGNC">           1 :     ipic_ier_next = ipic_ier_ff;</span></span>
+<span id="L525"><span class="lineNum">     525</span> <span class="tlaUNC tlaBgUNC">           0 :     if (cicsr_wr_req) begin</span></span>
+<span id="L526"><span class="lineNum">     526</span> <span class="tlaUNC">           0 :         ipic_ier_next[irq_serv_idx] = irq_serv_vd</span></span>
+<span id="L527"><span class="lineNum">     527</span> <span class="tlaUNC">           0 :                                     ? csr2ipic_wdata_i[SCR1_IPIC_ICSR_IE]</span></span>
+<span id="L528"><span class="lineNum">     528</span> <span class="tlaUNC">           0 :                                     : ipic_ier_ff[irq_serv_idx];</span></span>
+<span id="L529"><span class="lineNum">     529</span> <span class="tlaGNC tlaBgGNC">           2 :     end else if (icsr_wr_req) begin</span></span>
+<span id="L530"><span class="lineNum">     530</span> <span class="tlaGNC">           1 :         ipic_ier_next[ipic_idxr_ff] = csr2ipic_wdata_i[SCR1_IPIC_ICSR_IE];</span></span>
+<span id="L531"><span class="lineNum">     531</span>              :     end</span>
+<span id="L532"><span class="lineNum">     532</span>              : end</span>
+<span id="L533"><span class="lineNum">     533</span>              : </span>
+<span id="L534"><span class="lineNum">     534</span>              : // IMR</span>
+<span id="L535"><span class="lineNum">     535</span>              : //------------------------------------------------------------------------------</span>
+<span id="L536"><span class="lineNum">     536</span>              : // For every IRQ line sets either Level (0) or Edge (1) detection</span>
+<span id="L537"><span class="lineNum">     537</span>              : </span>
+<span id="L538"><span class="lineNum">     538</span> <span class="tlaGNC">     2568992 : always_ff @(negedge rst_n, posedge clk) begin</span></span>
+<span id="L539"><span class="lineNum">     539</span> <span class="tlaGNC">        3586 :     if (~rst_n) begin</span></span>
+<span id="L540"><span class="lineNum">     540</span> <span class="tlaGNC">        1793 :         ipic_imr_ff &lt;= '0;</span></span>
+<span id="L541"><span class="lineNum">     541</span> <span class="tlaGNC">           2 :     end else if (icsr_wr_req) begin</span></span>
+<span id="L542"><span class="lineNum">     542</span> <span class="tlaGNC">           1 :         ipic_imr_ff &lt;= ipic_imr_next;</span></span>
+<span id="L543"><span class="lineNum">     543</span>              :     end</span>
+<span id="L544"><span class="lineNum">     544</span>              : end</span>
+<span id="L545"><span class="lineNum">     545</span>              : </span>
+<span id="L546"><span class="lineNum">     546</span> <span class="tlaGNC">           2 : always_comb begin</span></span>
+<span id="L547"><span class="lineNum">     547</span> <span class="tlaGNC">           1 :     ipic_imr_next = ipic_imr_ff;</span></span>
+<span id="L548"><span class="lineNum">     548</span> <span class="tlaGNC">           2 :     if (icsr_wr_req) begin</span></span>
+<span id="L549"><span class="lineNum">     549</span> <span class="tlaGNC">           1 :         ipic_imr_next[ipic_idxr_ff] = csr2ipic_wdata_i[SCR1_IPIC_ICSR_IM];</span></span>
+<span id="L550"><span class="lineNum">     550</span>              :     end</span>
+<span id="L551"><span class="lineNum">     551</span>              : end</span>
+<span id="L552"><span class="lineNum">     552</span>              : </span>
+<span id="L553"><span class="lineNum">     553</span>              : // IINVR</span>
+<span id="L554"><span class="lineNum">     554</span>              : //------------------------------------------------------------------------------</span>
+<span id="L555"><span class="lineNum">     555</span>              : // For every IRQ line defines whether it should be inverted or not</span>
+<span id="L556"><span class="lineNum">     556</span>              : </span>
+<span id="L557"><span class="lineNum">     557</span> <span class="tlaGNC">     2568992 : always_ff @(negedge rst_n, posedge clk) begin</span></span>
+<span id="L558"><span class="lineNum">     558</span> <span class="tlaGNC">        3586 :     if (~rst_n) begin</span></span>
+<span id="L559"><span class="lineNum">     559</span> <span class="tlaGNC">        1793 :         ipic_iinvr_ff &lt;= '0;</span></span>
+<span id="L560"><span class="lineNum">     560</span> <span class="tlaGNC">           2 :     end else if (icsr_wr_req) begin</span></span>
+<span id="L561"><span class="lineNum">     561</span> <span class="tlaGNC">           1 :         ipic_iinvr_ff &lt;= ipic_iinvr_next;</span></span>
+<span id="L562"><span class="lineNum">     562</span>              :     end</span>
+<span id="L563"><span class="lineNum">     563</span>              : end</span>
+<span id="L564"><span class="lineNum">     564</span>              : </span>
+<span id="L565"><span class="lineNum">     565</span> <span class="tlaGNC">           2 : always_comb begin</span></span>
+<span id="L566"><span class="lineNum">     566</span> <span class="tlaGNC">           1 :     ipic_iinvr_next = ipic_iinvr_ff;</span></span>
+<span id="L567"><span class="lineNum">     567</span> <span class="tlaGNC">           2 :     if (icsr_wr_req) begin</span></span>
+<span id="L568"><span class="lineNum">     568</span> <span class="tlaGNC">           1 :         ipic_iinvr_next[ipic_idxr_ff] = csr2ipic_wdata_i[SCR1_IPIC_ICSR_INV];</span></span>
+<span id="L569"><span class="lineNum">     569</span>              :     end</span>
+<span id="L570"><span class="lineNum">     570</span>              : end</span>
+<span id="L571"><span class="lineNum">     571</span>              : </span>
+<span id="L572"><span class="lineNum">     572</span>              : // ICSR</span>
+<span id="L573"><span class="lineNum">     573</span>              : //------------------------------------------------------------------------------</span>
+<span id="L574"><span class="lineNum">     574</span>              : // Holds control and status information about the interrupt defined by Index Register</span>
+<span id="L575"><span class="lineNum">     575</span>              : </span>
+<span id="L576"><span class="lineNum">     576</span>              : assign ipic_icsr.ip    = ipic_ipr_ff  [ipic_idxr_ff];</span>
+<span id="L577"><span class="lineNum">     577</span>              : assign ipic_icsr.ie    = ipic_ier_ff  [ipic_idxr_ff];</span>
+<span id="L578"><span class="lineNum">     578</span>              : assign ipic_icsr.im    = ipic_imr_ff  [ipic_idxr_ff];</span>
+<span id="L579"><span class="lineNum">     579</span>              : assign ipic_icsr.inv   = ipic_iinvr_ff[ipic_idxr_ff];</span>
+<span id="L580"><span class="lineNum">     580</span>              : assign ipic_icsr.isv   = ipic_isvr_ff [ipic_idxr_ff];</span>
+<span id="L581"><span class="lineNum">     581</span>              : assign ipic_icsr.line  = SCR1_IRQ_LINES_WIDTH'(ipic_idxr_ff);</span>
+<span id="L582"><span class="lineNum">     582</span>              : </span>
+<span id="L583"><span class="lineNum">     583</span>              : //------------------------------------------------------------------------------</span>
+<span id="L584"><span class="lineNum">     584</span>              : // Priority IRQ generation logic</span>
+<span id="L585"><span class="lineNum">     585</span>              : //------------------------------------------------------------------------------</span>
+<span id="L586"><span class="lineNum">     586</span>              : </span>
+<span id="L587"><span class="lineNum">     587</span>              : assign irq_req_v = ipic_ipr_ff &amp; ipic_ier_ff;</span>
+<span id="L588"><span class="lineNum">     588</span>              : </span>
+<span id="L589"><span class="lineNum">     589</span>              : assign irr_priority        = scr1_search_one_16(irq_req_v);</span>
+<span id="L590"><span class="lineNum">     590</span>              : assign irq_req_vd          = irr_priority.vd;</span>
+<span id="L591"><span class="lineNum">     591</span>              : assign irq_req_idx         = irr_priority.idx;</span>
+<span id="L592"><span class="lineNum">     592</span>              : </span>
+<span id="L593"><span class="lineNum">     593</span>              : assign isvr_priority_eoi   = scr1_search_one_16(ipic_isvr_eoi);</span>
+<span id="L594"><span class="lineNum">     594</span>              : assign irq_eoi_req_vd      = isvr_priority_eoi.vd;</span>
+<span id="L595"><span class="lineNum">     595</span>              : assign irq_eoi_req_idx     = isvr_priority_eoi.idx;</span>
+<span id="L596"><span class="lineNum">     596</span>              : </span>
+<span id="L597"><span class="lineNum">     597</span>              : assign irq_hi_prior_pnd     = irq_req_idx &lt; irq_serv_idx;</span>
+<span id="L598"><span class="lineNum">     598</span>              : </span>
+<span id="L599"><span class="lineNum">     599</span>              : assign ipic2csr_irq_m_req_o = irq_req_vd &amp; (~irq_serv_vd | irq_hi_prior_pnd);</span>
+<span id="L600"><span class="lineNum">     600</span>              : </span>
+<span id="L601"><span class="lineNum">     601</span>              : assign irq_start_vd         = ipic2csr_irq_m_req_o &amp; ipic_soi_req;</span>
+<span id="L602"><span class="lineNum">     602</span>              : </span>
+<span id="L603"><span class="lineNum">     603</span>              : endmodule : scr1_ipic</span>
+<span id="L604"><span class="lineNum">     604</span>              : </span>
+<span id="L605"><span class="lineNum">     605</span>              : `endif // SCR1_IPIC_EN</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>
